@@ -113,7 +113,7 @@ func processRuleGroup(w http.ResponseWriter, r *http.Request) {
 		err = json.Unmarshal(bodyBytes, &pinput)
 		if err != nil {
 			logrus.Warnf("Error parsing json body to map. err=%s", err)
-			http.Error(w, "Invalid input JSON. It must be a flat map", 500)
+			http.Error(w, "Invalid input JSON. err="+err.Error(), 500)
 			return
 		}
 	}
