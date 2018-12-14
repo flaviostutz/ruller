@@ -45,7 +45,7 @@ func Process(groupName string, input map[string]interface{}) (map[string]interfa
 		logrus.Debugf("Processing rule '%s' '%v'", k, rule)
 		routput, err := rule(input)
 		if err != nil {
-			logrus.Debugf("Error processing rule %s.%s. Ignoring. err=%s", groupName, k, err)
+			return nil, fmt.Errorf("Error processing rule %s.%s. err=%s", groupName, k, err)
 		}
 		if routput != nil {
 			logrus.Debugf("Output is %v", routput)
