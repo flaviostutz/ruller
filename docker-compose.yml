@@ -1,0 +1,14 @@
+version: '3.5'
+
+services:
+
+  ruller:
+    build: .
+    image: flaviostutz/dockerwall
+    ports:
+      - 3000:3000
+    environment:
+      - LOG_LEVEL=debug
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
