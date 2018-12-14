@@ -9,6 +9,7 @@ import (
 	_ "os/signal"
 	_ "path/filepath"
 	_ "syscall"
+	_ "text/template"
 
 	_ "github.com/Sirupsen/logrus"
 

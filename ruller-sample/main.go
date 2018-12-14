@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math/rand"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/flaviostutz/ruller/ruller"
@@ -14,10 +15,11 @@ func main() {
 		output := make(map[string]interface{})
 		output["opt1"] = "Some tests"
 		output["opt2"] = 129.99
+		rnd := fmt.Sprintln("v", rand.Int())
 		if input["children"] == true {
 			child := make(map[string]interface{})
-			child["c1"] = "v1"
-			child["c2"] = "v2"
+			child["c1"] = "123"
+			child["c2"] = rnd
 			output["children"] = child
 		}
 		return output, nil
