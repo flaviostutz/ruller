@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/Sirupsen/logrus"
 	"github.com/flaviostutz/ruller/ruller"
 )
@@ -10,20 +12,26 @@ func main() {
 	logrus.Infof("====Starting Ruller Sample====")
 	ruller.Add("test", "rule1", func(input map[string]interface{}) (map[string]interface{}, error) {
 		output := make(map[string]interface{})
-		output["opt1"] = "Lots of tests"
+		output["opt1"] = "Some tests"
 		output["opt2"] = 129.99
-		if input["param1"] == "value1" {
+		if input["children"] == true {
 			child := make(map[string]interface{})
 			child["c1"] = "v1"
 			child["c2"] = "v2"
-			output["w/child"] = child
+			output["children"] = child
 		}
 		return output, nil
 	})
 	ruller.Add("test", "rule2", func(input map[string]interface{}) (map[string]interface{}, error) {
 		output := make(map[string]interface{})
-		output["opt1"] = "More tests to come!"
-		output["opt3"] = "Maybe"
+		output["opt1"] = "Lots of tests"
+		age, ok := input["age"].(float64)
+		if !ok {
+			return nil, fmt.Errorf("Invalid 'age' detected. age=%s", input["age"])
+		}
+		if age > 30 {
+			output["category"] = "old"
+		}
 		return output, nil
 	})
 

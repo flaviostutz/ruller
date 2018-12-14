@@ -2,7 +2,7 @@ FROM golang:1.10 AS BUILD
 
 #doing dependency build separated from source build optimizes time for developer, but is not required
 #install external dependencies first
-ADD /ruller-sample.go $GOPATH/src/ruller-sample/ruller-sample.go
+ADD /main.go $GOPATH/src/ruller-sample/main.go
 RUN go get -v ruller-sample
 
 #now build source code
