@@ -128,6 +128,7 @@ func processRuleGroup(w http.ResponseWriter, r *http.Request) {
 	}
 
 	logrus.Debugf("Parsing output map to json. output=%s", poutput)
+	w.Header().Set("Content-Type", "application/json")
 	outBytes, err := json.Marshal(poutput)
 	_, err1 := w.Write(outBytes)
 	if err1 != nil {
