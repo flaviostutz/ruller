@@ -29,8 +29,10 @@ func main() {
 		if !ok {
 			return nil, fmt.Errorf("Invalid 'age' detected. age=%s", input["age"])
 		}
-		if age > 30 {
-			output["category"] = "old"
+		if age > 60 {
+			output["category"] = "elder"
+		} else {
+			output["category"] = "young"
 		}
 		return output, nil
 	})
