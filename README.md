@@ -5,9 +5,11 @@ A simple REST based rule engine in which rules are written in Go
 2. You POST to /[group-name] along with some json input.
 3. All rules for that group are processed using the input
 4. Depending on your implementation, some rules returns data and some rules not
-4. Finally, all rule's results are merged and returned to the caller as a json
+4. Finally, all rule's results are merged and returned to the REST caller as a json
 
 You can use this for feature enablement, dynamic systems configuration and other applications where a static key value store wouldn't help you because you need some logic on an input value in order to determine the output.
+
+Checkout some [benchmarks](BENCHMARK.md) we made this far too.
 
 ## Example
 
@@ -92,3 +94,8 @@ curl -X POST \
 ```
 {"category":"elder","children":{"c1":"v1","c2":"v2"},"opt1":"Lots of tests","opt2":129.99}
 ```
+
+
+## More resources
+
+* http://github.com/flaviostutz/ruller-sample-dsl - an example on how to build a DSL tool to generate Go Ruller code from an specific rule domain and build a Docker container with the REST api for your compiled rules
