@@ -38,6 +38,20 @@ func main() {
 		}
 		return output, nil
 	})
+	ruller.AddChild("test", "rule2.1", func(input map[string]interface{}, "rule2") (map[string]interface{}, error) {
+		output := make(map[string]interface{})
+		output["opt1"] = "Lots of tests"
+		age, ok := input["age"].(float64)
+		if !ok {
+			return nil, fmt.Errorf("Invalid 'age' detected. age=%s", input["age"])
+		}
+		if age > 60 {
+			output["category"] = "elder"
+		} else {
+			output["category"] = "young"
+		}
+		return output, nil
+	}
 
 	ruller.StartServer()
 }
