@@ -21,8 +21,8 @@ type Rule func(Context) (map[string]interface{}, error)
 
 //Context used as input for rule processing
 type Context struct {
-	input          map[string]interface{}
-	childrenOutput map[string]interface{}
+	Input          map[string]interface{}
+	ChildrenOutput map[string]interface{}
 }
 
 type ruleInfo struct {
@@ -95,7 +95,7 @@ func processRules(rules map[string]ruleInfo, input map[string]interface{}) (map[
 
 		rule := ruleInfo.rule
 		logrus.Debugf("Invoking rule '%s' '%v'", k, rule)
-		ctx := Context{input: input, childrenOutput: coutput}
+		ctx := Context{Input: input, ChildrenOutput: coutput}
 		routput, err := rule(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("Error processing rule %s. err=%s", k, err)

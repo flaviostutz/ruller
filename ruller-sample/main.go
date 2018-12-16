@@ -12,12 +12,12 @@ import (
 func main() {
 	logrus.SetLevel(logrus.DebugLevel)
 	logrus.Infof("====Starting Ruller Sample====")
-	err := ruller.Add("test", "rule1", func(input map[string]interface{}) (map[string]interface{}, error) {
+	err := ruller.Add("test", "rule1", func(ctx ruller.Context) (map[string]interface{}, error) {
 		output := make(map[string]interface{})
 		output["opt1"] = "Some tests"
 		output["opt2"] = 129.99
 		rnd := fmt.Sprintf("v%d", rand.Int())
-		if input["menu"] == true {
+		if ctx.Input["menu"] == true {
 			child := make(map[string]interface{})
 			child["c1"] = "123"
 			child["c2"] = rnd
@@ -29,32 +29,38 @@ func main() {
 		panic(err)
 	}
 
-	err = ruller.Add("test", "rule2", func(input map[string]interface{}) (map[string]interface{}, error) {
+	err = ruller.Add("test", "rule2", func(ctx ruller.Context) (map[string]interface{}, error) {
 		output := make(map[string]interface{})
 		output["opt1"] = "Lots of tests"
-		cinput, exists := input["_children_"]
-		if !exists {
-			fmt.Errorf("Couldn't locate rule 2.1 output")
-		}
-		logrus.Debugf("childre output from rule 2.1 is %s", cinput)
-		output["from-child-category"] = cinput["category"]
+		logrus.Debugf("children output from rule 2.1 is %s", ctx.ChildrenOutput)
+		output["from-child-category"] = ctx.ChildrenOutput["category"]
+		output["from-child-type"] = ctx.ChildrenOutput["type"]
 		return output, nil
 	})
 	if err != nil {
 		panic(err)
 	}
 
-	err = ruller.AddChild("test", "rule2.1", "rule2", func(input map[string]interface{}) (map[string]interface{}, error) {
+	err = ruller.AddChild("test", "rule2.1", "rule2", func(ctx ruller.Context) (map[string]interface{}, error) {
 		output := make(map[string]interface{})
-		age, ok := input["age"].(float64)
+		age, ok := ctx.Input["age"].(float64)
 		if !ok {
-			return nil, fmt.Errorf("Invalid 'age' detected. age=%s", input["age"])
+			return nil, fmt.Errorf("Invalid 'age' detected. age=%s", ctx.Input["age"])
 		}
 		if age > 60 {
 			output["category"] = "elder"
 		} else {
 			output["category"] = "young"
 		}
+		return output, nil
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	err = ruller.AddChild("test", "rule2.2", "rule2", func(ctx ruller.Context) (map[string]interface{}, error) {
+		output := make(map[string]interface{})
+		output["type"] = "any"
 		return output, nil
 	})
 	if err != nil {
