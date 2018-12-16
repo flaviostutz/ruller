@@ -11,7 +11,7 @@ import (
 func main() {
 	logrus.SetLevel(logrus.DebugLevel)
 	logrus.Infof("====Starting Ruller Sample====")
-	ruller.Add("test", "rule1", func(input map[string]interface{}) (map[string]interface{}, error) {
+	err := ruller.Add("test", "rule1", func(input map[string]interface{}) (map[string]interface{}, error) {
 		output := make(map[string]interface{})
 		output["opt1"] = "Some tests"
 		output["opt2"] = 129.99
@@ -24,7 +24,11 @@ func main() {
 		}
 		return output, nil
 	})
-	ruller.Add("test", "rule2", func(input map[string]interface{}) (map[string]interface{}, error) {
+	if err != nil {
+		panic(err)
+	}
+
+	err = ruller.Add("test", "rule2", func(input map[string]interface{}) (map[string]interface{}, error) {
 		output := make(map[string]interface{})
 		output["opt1"] = "Lots of tests"
 		age, ok := input["age"].(float64)
@@ -38,7 +42,11 @@ func main() {
 		}
 		return output, nil
 	})
-	ruller.AddChild("test", "rule2.1", func(input map[string]interface{}, "rule2") (map[string]interface{}, error) {
+	if err != nil {
+		panic(err)
+	}
+
+	err = ruller.AddChild("test", "rule2.1", "rule21", func(input map[string]interface{}) (map[string]interface{}, error) {
 		output := make(map[string]interface{})
 		output["opt1"] = "Lots of tests"
 		age, ok := input["age"].(float64)
@@ -51,6 +59,9 @@ func main() {
 			output["category"] = "young"
 		}
 		return output, nil
+	})
+	if err != nil {
+		panic(err)
 	}
 
 	ruller.StartServer()

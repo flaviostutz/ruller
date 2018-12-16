@@ -47,13 +47,16 @@ func AddChild(groupName string, ruleName string, parentRuleName string, rule Rul
 	rules[ruleName] = &rulei
 
 	if parentRuleName == "" {
+		logrus.Debugf("Found root rule %s", ruleName)
 		ruleGroups[groupName][ruleName] = rulei
 
 	} else {
+		logrus.Debugf("Adding child rule '%s' to parent", ruleName)
 		parentRule, exists := rules[parentRuleName]
 		if !exists {
 			return fmt.Errorf("parent rule '%s' not found", parentRuleName)
 		}
+		logrus.Debugf("Parent of %v is %v", rule, parentRule.rule)
 		pr := *parentRule
 		pr.children = append(pr.children, rulei)
 	}
