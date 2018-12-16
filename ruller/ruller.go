@@ -17,11 +17,17 @@ var (
 )
 
 //Rule Function that defines a rule. The rule accepts a map as input and returns a map as output. The output map maybe nil
-type Rule func(map[string]interface{}) (map[string]interface{}, error)
+type Rule func(Context) (map[string]interface{}, error)
+
+//Context used as input for rule processing
+type Context struct {
+	input          map[string]interface{}
+	childrenOutput map[string]interface{}
+}
 
 type ruleInfo struct {
 	rule     Rule
-	children []ruleInfo
+	children map[string]ruleInfo
 }
 
 //Add adds a rule implementation to a group
@@ -42,7 +48,7 @@ func AddChild(groupName string, ruleName string, parentRuleName string, rule Rul
 
 	rulei := ruleInfo{
 		rule:     rule,
-		children: make([]ruleInfo, 0),
+		children: make(map[string]ruleInfo, 0),
 	}
 	rules[ruleName] = &rulei
 
@@ -58,7 +64,7 @@ func AddChild(groupName string, ruleName string, parentRuleName string, rule Rul
 		}
 		logrus.Debugf("Parent of %v is %v", rule, parentRule.rule)
 		pr := *parentRule
-		pr.children = append(pr.children, rulei)
+		pr.children[ruleName] = rulei
 	}
 	return nil
 }
@@ -77,9 +83,20 @@ func Process(groupName string, input map[string]interface{}) (map[string]interfa
 func processRules(rules map[string]ruleInfo, input map[string]interface{}) (map[string]interface{}, error) {
 	output := make(map[string]interface{})
 	for k, ruleInfo := range rules {
+		coutput := make(map[string]interface{})
+		if len(ruleInfo.children) > 0 {
+			logrus.Debugf("Rule '%s': processing %d children rules before itself", k, len(ruleInfo.children))
+			coutput2, err := processRules(ruleInfo.children, input)
+			if err != nil {
+				return nil, err
+			}
+			coutput = coutput2
+		}
+
 		rule := ruleInfo.rule
-		logrus.Debugf("Processing rule '%s' '%v'", k, rule)
-		routput, err := rule(input)
+		logrus.Debugf("Invoking rule '%s' '%v'", k, rule)
+		ctx := Context{input: input, childrenOutput: coutput}
+		routput, err := rule(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("Error processing rule %s. err=%s", k, err)
 		}
@@ -94,6 +111,7 @@ func processRules(rules map[string]ruleInfo, input map[string]interface{}) (map[
 		} else {
 			logrus.Debugf("Output is nil")
 		}
+
 	}
 	return output, nil
 }

@@ -7,6 +7,7 @@ RUN go get -v ruller-sample
 
 #now build source code
 ADD ruller-sample $GOPATH/src/ruller-sample
+ADD ruller $GOPATH/src/ruller
 RUN go get -v ruller-sample
 #RUN go test -v ruller-sample
 

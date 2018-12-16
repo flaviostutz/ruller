@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"math/rand"
 
+	"ruller"
+
 	"github.com/Sirupsen/logrus"
-	"github.com/flaviostutz/ruller/ruller"
 )
 
 func main() {
@@ -31,24 +32,20 @@ func main() {
 	err = ruller.Add("test", "rule2", func(input map[string]interface{}) (map[string]interface{}, error) {
 		output := make(map[string]interface{})
 		output["opt1"] = "Lots of tests"
-		age, ok := input["age"].(float64)
-		if !ok {
-			return nil, fmt.Errorf("Invalid 'age' detected. age=%s", input["age"])
+		cinput, exists := input["_children_"]
+		if !exists {
+			fmt.Errorf("Couldn't locate rule 2.1 output")
 		}
-		if age > 60 {
-			output["category"] = "elder"
-		} else {
-			output["category"] = "young"
-		}
+		logrus.Debugf("childre output from rule 2.1 is %s", cinput)
+		output["from-child-category"] = cinput["category"]
 		return output, nil
 	})
 	if err != nil {
 		panic(err)
 	}
 
-	err = ruller.AddChild("test", "rule2.1", "rule21", func(input map[string]interface{}) (map[string]interface{}, error) {
+	err = ruller.AddChild("test", "rule2.1", "rule2", func(input map[string]interface{}) (map[string]interface{}, error) {
 		output := make(map[string]interface{})
-		output["opt1"] = "Lots of tests"
 		age, ok := input["age"].(float64)
 		if !ok {
 			return nil, fmt.Errorf("Invalid 'age' detected. age=%s", input["age"])
