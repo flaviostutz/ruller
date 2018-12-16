@@ -25,7 +25,12 @@ type ruleInfo struct {
 }
 
 //Add adds a rule implementation to a group
-func Add(groupName string, ruleName string, rule Rule, parentRuleName string) error {
+func Add(groupName string, ruleName string, rule Rule) error {
+	return AddChild(groupName, ruleName, rule, "")
+}
+
+//AddChild adds a rule implementation to a group
+func AddChild(groupName string, ruleName string, rule Rule, parentRuleName string) error {
 	logrus.Debugf("Adding rule '%s' '%v' to group '%s'. parent=%s", ruleName, rule, groupName, parentRuleName)
 	if _, exists := ruleGroups[groupName]; !exists {
 		ruleGroups[groupName] = make(map[string]ruleInfo)

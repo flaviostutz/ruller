@@ -40,12 +40,4 @@ func main() {
 	})
 
 	ruller.StartServer()
-
-	// input := make(map[string]interface{})
-	// output, err := Process("test", input)
-	// if err != nil {
-	// 	logrus.Errorf("Error evaluating rules. err=%s", err)
-	// 	os.Exit(1)
-	// }
-	// logrus.Infof("Rules evaluated. output=%s", output)
 }
