@@ -25,6 +25,11 @@ type Context struct {
 	ChildrenOutput map[string]interface{}
 }
 
+//ProcessOptions options for rule process
+type ProcessOptions struct {
+	MergeKeepFirst bool
+}
+
 type ruleInfo struct {
 	rule     Rule
 	children map[string]ruleInfo
@@ -70,23 +75,23 @@ func AddChild(groupName string, ruleName string, parentRuleName string, rule Rul
 }
 
 //Process process all rules in a group and return a resulting map with all values returned by the rules
-func Process(groupName string, input map[string]interface{}) (map[string]interface{}, error) {
+func Process(groupName string, input map[string]interface{}, options ProcessOptions) (map[string]interface{}, error) {
 	logrus.Debugf(">>>Processing rules from group '%s' with input map %s", groupName, input)
 	ruleGroup, exists := ruleGroups[groupName]
 	if !exists {
 		return nil, fmt.Errorf("Group %s doesn't exist", groupName)
 	}
 	logrus.Debugf("Invoking all rules from group %s", groupName)
-	return processRules(ruleGroup, input)
+	return processRules(ruleGroup, input, options)
 }
 
-func processRules(rules map[string]ruleInfo, input map[string]interface{}) (map[string]interface{}, error) {
+func processRules(rules map[string]ruleInfo, input map[string]interface{}, options ProcessOptions) (map[string]interface{}, error) {
 	output := make(map[string]interface{})
 	for k, ruleInfo := range rules {
 		coutput := make(map[string]interface{})
 		if len(ruleInfo.children) > 0 {
 			logrus.Debugf("Rule '%s': processing %d children rules before itself", k, len(ruleInfo.children))
-			coutput2, err := processRules(ruleInfo.children, input)
+			coutput2, err := processRules(ruleInfo.children, input, options)
 			if err != nil {
 				return nil, err
 			}
@@ -103,10 +108,17 @@ func processRules(rules map[string]ruleInfo, input map[string]interface{}) (map[
 		if routput != nil {
 			logrus.Debugf("Output is %v", routput)
 			for k, v := range routput {
-				if _, exists := output[k]; exists {
-					logrus.Debugf("A rule has replaced an existing key (%s) in output", k)
+				_, exists := output[k]
+				if exists {
+					if options.MergeKeepFirst {
+						logrus.Debugf("Skipping key '%s' because it already exists in output", k)
+					} else {
+						output[k] = v
+						logrus.Debugf("Replacing existing key '%s' in output", k)
+					}
+				} else {
+					output[k] = v
 				}
-				output[k] = v
 			}
 		} else {
 			logrus.Debugf("Output is nil")
@@ -174,7 +186,19 @@ func processRuleGroup(w http.ResponseWriter, r *http.Request) {
 
 	logrus.Debugf("input=%s", pinput)
 
-	poutput, err := Process(groupName, pinput)
+	mergeKeepFirst, exists := pinput["_mergeKeepFirst"]
+	keepFirst := true
+	if exists {
+		switch mergeKeepFirst.(type) {
+		case bool:
+			keepFirst = mergeKeepFirst.(bool)
+		default:
+			logrus.Warnf("Input attribute '_mergeKeepFirst' must be boolean")
+			http.Error(w, "Error processing rules", 500)
+			return
+		}
+	}
+	poutput, err := Process(groupName, pinput, ProcessOptions{MergeKeepFirst: keepFirst})
 	if err != nil {
 		logrus.Warnf("Error processing rules. err=%s", err)
 		http.Error(w, "Error processing rules", 500)
