@@ -12,40 +12,68 @@ import (
 )
 
 var (
-	ruleGroups = make(map[string]map[string]Rule)
+	ruleGroups = make(map[string]map[string]ruleInfo)
+	rules      = make(map[string]*ruleInfo)
 )
 
 //Rule Function that defines a rule. The rule accepts a map as input and returns a map as output. The output map maybe nil
 type Rule func(map[string]interface{}) (map[string]interface{}, error)
 
+type ruleInfo struct {
+	rule     Rule
+	children []ruleInfo
+}
+
 //Add adds a rule implementation to a group
-func Add(groupName string, ruleName string, rule Rule) error {
-	logrus.Debugf("Adding rule '%s' '%v' to group '%s'", ruleName, rule, groupName)
+func Add(groupName string, ruleName string, rule Rule, parentRuleName string) error {
+	logrus.Debugf("Adding rule '%s' '%v' to group '%s'. parent=%s", ruleName, rule, groupName, parentRuleName)
 	if _, exists := ruleGroups[groupName]; !exists {
-		ruleGroups[groupName] = make(map[string]Rule)
+		ruleGroups[groupName] = make(map[string]ruleInfo)
 	}
 	if _, exists := ruleGroups[groupName][ruleName]; exists {
 		logrus.Warnf("Rule '%s' already exists in group '%s'. Skipping Add", ruleName, groupName)
 		return fmt.Errorf("Rule '%s' already exists in group '%s'", ruleName, groupName)
 	}
-	ruleGroups[groupName][ruleName] = rule
+
+	rulei := ruleInfo{
+		rule:     rule,
+		children: make([]ruleInfo, 0),
+	}
+	rules[ruleName] = &rulei
+
+	if parentRuleName == "" {
+		ruleGroups[groupName][ruleName] = rulei
+
+	} else {
+		parentRule, exists := rules[parentRuleName]
+		if !exists {
+			return fmt.Errorf("parent rule '%s' not found", parentRuleName)
+		}
+		pr := *parentRule
+		pr.children = append(pr.children, rulei)
+	}
 	return nil
 }
 
 //Process process all rules in a group and return a resulting map with all values returned by the rules
 func Process(groupName string, input map[string]interface{}) (map[string]interface{}, error) {
-	logrus.Debugf("Processing rules from group '%s' with input map %s", groupName, input)
+	logrus.Debugf(">>>Processing rules from group '%s' with input map %s", groupName, input)
 	ruleGroup, exists := ruleGroups[groupName]
 	if !exists {
 		return nil, fmt.Errorf("Group %s doesn't exist", groupName)
 	}
 	logrus.Debugf("Invoking all rules from group %s", groupName)
+	return processRules(ruleGroup, input)
+}
+
+func processRules(rules map[string]ruleInfo, input map[string]interface{}) (map[string]interface{}, error) {
 	output := make(map[string]interface{})
-	for k, rule := range ruleGroup {
+	for k, ruleInfo := range rules {
+		rule := ruleInfo.rule
 		logrus.Debugf("Processing rule '%s' '%v'", k, rule)
 		routput, err := rule(input)
 		if err != nil {
-			return nil, fmt.Errorf("Error processing rule %s.%s. err=%s", groupName, k, err)
+			return nil, fmt.Errorf("Error processing rule %s. err=%s", k, err)
 		}
 		if routput != nil {
 			logrus.Debugf("Output is %v", routput)

@@ -7,6 +7,8 @@ A simple REST based rule engine in which rules are written in Go
 4. Depending on your implementation, some rules returns data and some rules not
 4. Finally, all rule's results are merged and returned to the REST caller as a json
 
+Ruller works by invocating a bunch of rules with the same input from a single REST call, merging rules outputs and returning the result to the caller. 
+
 You can use this for feature enablement, dynamic systems configuration and other applications where a static key value store wouldn't help you because you need some logic on an input value in order to determine the output.
 
 Checkout some [benchmarks](BENCHMARK.md) we made this far too.

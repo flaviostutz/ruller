@@ -15,8 +15,8 @@ func main() {
 		output := make(map[string]interface{})
 		output["opt1"] = "Some tests"
 		output["opt2"] = 129.99
-		rnd := fmt.Sprintln("v", rand.Int())
-		if input["children"] == true {
+		rnd := fmt.Sprintf("v%d", rand.Int())
+		if input["menu"] == true {
 			child := make(map[string]interface{})
 			child["c1"] = "123"
 			child["c2"] = rnd
