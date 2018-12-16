@@ -23,6 +23,16 @@ func main() {
 			child["c2"] = rnd
 			output["children"] = child
 		}
+		output[""]
+		return output, nil
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	err = ruller.AddChild("test", "rule1.1", "rule1", func(ctx ruller.Context) (map[string]interface{}, error) {
+		output := make(map[string]interface{})
+		output["mydata"] = "myvalue"
 		return output, nil
 	})
 	if err != nil {
@@ -33,8 +43,6 @@ func main() {
 		output := make(map[string]interface{})
 		output["opt1"] = "Lots of tests"
 		logrus.Debugf("children output from rule 2.1 is %s", ctx.ChildrenOutput)
-		output["from-child-category"] = ctx.ChildrenOutput["category"]
-		output["from-child-type"] = ctx.ChildrenOutput["type"]
 		return output, nil
 	})
 	if err != nil {
