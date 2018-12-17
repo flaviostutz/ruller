@@ -28,11 +28,14 @@ type Context struct {
 //ProcessOptions options for rule process
 type ProcessOptions struct {
 	MergeKeepFirst bool
+	FlattenOutput  bool
 }
 
 type ruleInfo struct {
-	rule     Rule
-	children map[string]ruleInfo
+	name       string
+	parentName string
+	rule       Rule
+	children   map[string]ruleInfo
 }
 
 //Add adds a rule implementation to a group
@@ -52,8 +55,10 @@ func AddChild(groupName string, ruleName string, parentRuleName string, rule Rul
 	}
 
 	rulei := ruleInfo{
-		rule:     rule,
-		children: make(map[string]ruleInfo, 0),
+		name:       ruleName,
+		parentName: parentRuleName,
+		rule:       rule,
+		children:   make(map[string]ruleInfo, 0),
 	}
 	rules[ruleName] = &rulei
 
@@ -87,45 +92,63 @@ func Process(groupName string, input map[string]interface{}, options ProcessOpti
 
 func processRules(rules map[string]ruleInfo, input map[string]interface{}, options ProcessOptions) (map[string]interface{}, error) {
 	output := make(map[string]interface{})
-	for k, ruleInfo := range rules {
-		coutput := make(map[string]interface{})
-		if len(ruleInfo.children) > 0 {
-			logrus.Debugf("Rule '%s': processing %d children rules before itself", k, len(ruleInfo.children))
-			coutput2, err := processRules(ruleInfo.children, input, options)
+	for k, rinfo := range rules {
+		childrenOutput := make(map[string]interface{})
+		if len(rinfo.children) > 0 {
+			logrus.Debugf("Rule '%s': processing %d children rules before itself", k, len(rinfo.children))
+			co, err := processRules(rinfo.children, input, options)
 			if err != nil {
 				return nil, err
 			}
-			coutput = coutput2
+			childrenOutput = co
 		}
 
-		rule := ruleInfo.rule
+		rule := rinfo.rule
 		logrus.Debugf("Invoking rule '%s' '%v'", k, rule)
-		ctx := Context{Input: input, ChildrenOutput: coutput}
+		ctx := Context{Input: input, ChildrenOutput: childrenOutput}
 		routput, err := rule(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("Error processing rule %s. err=%s", k, err)
 		}
-		if routput != nil {
-			logrus.Debugf("Output is %v", routput)
-			for k, v := range routput {
-				_, exists := output[k]
+
+		for k, v := range childrenOutput {
+			routput[k] = v
+		}
+
+		mergeMaps(rinfo, routput, &output, options)
+	}
+	return output, nil
+}
+
+func mergeMaps(rinfo ruleInfo, sourceMap map[string]interface{}, destMapP *map[string]interface{}, options ProcessOptions) {
+	destMap := *destMapP
+	logrus.Debugf("Merging map %v to %v", sourceMap, destMap)
+	if len(sourceMap) > 0 {
+		if options.FlattenOutput {
+			logrus.Debugf("Merge results (flatten)")
+			for k, v := range sourceMap {
+				_, exists := destMap[k]
 				if exists {
 					if options.MergeKeepFirst {
 						logrus.Debugf("Skipping key '%s' because it already exists in output", k)
 					} else {
-						output[k] = v
+						destMap[k] = v
 						logrus.Debugf("Replacing existing key '%s' in output", k)
 					}
 				} else {
-					output[k] = v
+					destMap[k] = v
 				}
 			}
 		} else {
-			logrus.Debugf("Output is nil")
+			logrus.Debugf("Appending rule %s output to parent %s", rinfo.name, rinfo.parentName)
+			rmap, exists := destMap["_items"].([]map[string]interface{})
+			if !exists {
+				rmap = make([]map[string]interface{}, 0)
+			}
+			rmap = append(rmap, sourceMap)
+			destMap["_items"] = rmap
 		}
-
 	}
-	return output, nil
 }
 
 //StartServer Initialize and start REST server
@@ -198,7 +221,21 @@ func processRuleGroup(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	poutput, err := Process(groupName, pinput, ProcessOptions{MergeKeepFirst: keepFirst})
+
+	flattenOpt, exists1 := pinput["_flatten"]
+	flatten := true
+	if exists1 {
+		switch flattenOpt.(type) {
+		case bool:
+			flatten = flattenOpt.(bool)
+		default:
+			logrus.Warnf("Input attribute '_flatten' must be boolean")
+			http.Error(w, "Error processing rules", 500)
+			return
+		}
+	}
+
+	poutput, err := Process(groupName, pinput, ProcessOptions{MergeKeepFirst: keepFirst, FlattenOutput: flatten})
 	if err != nil {
 		logrus.Warnf("Error processing rules. err=%s", err)
 		http.Error(w, "Error processing rules", 500)
