@@ -254,7 +254,7 @@ func processRuleGroup(w http.ResponseWriter, r *http.Request) {
 
 	logrus.Debugf("input=%s", pinput)
 
-	keepFirst, err := getBool(pinput, "_mergeKeepFirst", true)
+	keepFirst, err := getBool(pinput, "_keepFirst", true)
 	if err != nil {
 		logrus.Warnf(err.Error())
 		http.Error(w, "Error processing rules", 500)

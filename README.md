@@ -97,6 +97,13 @@ curl -X POST \
 {"category":"elder","children":{"c1":"v1","c2":"v2"},"opt1":"Lots of tests","opt2":129.99}
 ```
 
+## Special parameters on POST body
+
+* "_flatten" - true|false. If true, a flat map with all keys returned by all rules, with results merged, will be returned. If false, will return the results with the same tree shape as the rules itself. Defaults to true
+
+* "_keepFirst" - true|false. When using flat map as result, this determines whetever to keep the value from the first or the last rule processed during merge. Default is true
+
+* "_info" - true|false. If true, will add attribute "_rule" with the name of the rule that generated the node on the result tree (if not using flat map as result). Default to true
 
 ## More resources
 
