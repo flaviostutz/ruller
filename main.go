@@ -13,8 +13,8 @@ import (
 
 	_ "github.com/Sirupsen/logrus"
 
-	// _ "github.com/prometheus/client_golang/prometheus"
-	// _ "github.com/prometheus/client_golang/prometheus/promhttp"
+	_ "github.com/prometheus/client_golang/prometheus"
+	_ "github.com/prometheus/client_golang/prometheus/promhttp"
 
 	_ "github.com/gorilla/mux"
 )

@@ -6,15 +6,34 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"time"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/gorilla/mux"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 var (
 	groupRules = make(map[string][]*ruleInfo)
 	rulesMap   = make(map[string]map[string]*ruleInfo)
 )
+
+var rulesProcessingHist = prometheus.NewHistogramVec(prometheus.HistogramOpts{
+	Name:    "ruller_rules_calculation_seconds",
+	Help:    "Ruller rules group calculation duration buckets",
+	Buckets: []float64{0.01, 0.1, 1},
+}, []string{
+	"group",
+	"status",
+})
+
+var groupRuleCount = prometheus.NewCounterVec(prometheus.CounterOpts{
+	Name: "ruller_rules_active_count",
+	Help: "Number of active rules in each rule group",
+}, []string{
+	"group",
+})
 
 //Rule Function that defines a rule. The rule accepts a map as input and returns a map as output. The output map maybe nil
 type Rule func(Context) (map[string]interface{}, error)
@@ -78,8 +97,8 @@ func AddChild(groupName string, ruleName string, parentRuleName string, rule Rul
 		}
 		logrus.Debugf("Parent of %v is %v", rule, parentRule.rule)
 		parentRule.children = append(parentRule.children, &rulei)
-		logrus.Debugf(">>>>>Children %v", parentRule.children)
 	}
+	groupRuleCount.WithLabelValues(groupName).Inc()
 	return nil
 }
 
@@ -91,7 +110,14 @@ func Process(groupName string, input map[string]interface{}, options ProcessOpti
 		return nil, fmt.Errorf("Group %s doesn't exist", groupName)
 	}
 	logrus.Debugf("Invoking all rules from group %s", groupName)
-	return processRules(rules, input, options)
+	start := time.Now()
+	result, err := processRules(rules, input, options)
+	status := "2xx"
+	if err != nil {
+		status = "5xx"
+	}
+	rulesProcessingHist.WithLabelValues(groupName, status).Observe(time.Since(start).Seconds())
+	return result, err
 }
 
 func processRules(rules []*ruleInfo, input map[string]interface{}, options ProcessOptions) (map[string]interface{}, error) {
@@ -187,8 +213,12 @@ func StartServer() error {
 		logrus.SetLevel(logrus.InfoLevel)
 	}
 
+	prometheus.MustRegister(rulesProcessingHist)
+	prometheus.MustRegister(groupRuleCount)
+
 	router := mux.NewRouter()
-	router.HandleFunc("/{groupName}", processRuleGroup).Methods("POST")
+	router.HandleFunc("/rules/{groupName}", processRuleGroup).Methods("POST")
+	router.Handle("/metrics", promhttp.Handler())
 	listen := fmt.Sprintf("%s:%d", *listenIP, *listenPort)
 	logrus.Infof("Listening at %s", listen)
 	err := http.ListenAndServe(listen, router)
