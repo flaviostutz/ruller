@@ -22,7 +22,7 @@ var (
 var rulesProcessingHist = prometheus.NewHistogramVec(prometheus.HistogramOpts{
 	Name:    "ruller_rules_calculation_seconds",
 	Help:    "Ruller rules group calculation duration buckets",
-	Buckets: []float64{0.01, 0.1, 1},
+	Buckets: []float64{0.001, 0.01, 0.1, 1},
 }, []string{
 	"group",
 	"status",
