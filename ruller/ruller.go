@@ -12,9 +12,8 @@ import (
 )
 
 var (
-	ruleGroups = make(map[string]map[string]ruleInfo)
-	rules      = make(map[string]*ruleInfo)
-	ruleNumber = 1
+	groupRules = make(map[string][]*ruleInfo)
+	rulesMap   = make(map[string]map[string]*ruleInfo)
 )
 
 //Rule Function that defines a rule. The rule accepts a map as input and returns a map as output. The output map maybe nil
@@ -28,17 +27,19 @@ type Context struct {
 
 //ProcessOptions options for rule process
 type ProcessOptions struct {
+	//MergeKeepFirst When merging output results from rules, if there is a duplicate key, keep the first or the last result found. applies when using flatten output. defaults to true
 	MergeKeepFirst bool
-	AddRuleInfo    bool
-	FlattenOutput  bool
+	//AddRuleInfo Add rule info attributes (name etc) to the output tree when not flatten. defaults to false
+	AddRuleInfo bool
+	//Get all rules's results and merge all outputs into a single flat map. If false, the output will come the same way as the hierarchy of rules. Defaults to true
+	FlattenOutput bool
 }
 
 type ruleInfo struct {
 	name       string
 	parentName string
 	rule       Rule
-	children   map[string]ruleInfo
-	id         int
+	children   []*ruleInfo
 }
 
 //Add adds a rule implementation to a group
@@ -49,37 +50,35 @@ func Add(groupName string, ruleName string, rule Rule) error {
 //AddChild adds a rule implementation to a group
 func AddChild(groupName string, ruleName string, parentRuleName string, rule Rule) error {
 	logrus.Debugf("Adding rule '%s' '%v' to group '%s'. parent=%s", ruleName, rule, groupName, parentRuleName)
-	if _, exists := ruleGroups[groupName]; !exists {
-		ruleGroups[groupName] = make(map[string]ruleInfo)
+	if _, exists := rulesMap[groupName]; !exists {
+		rulesMap[groupName] = make(map[string]*ruleInfo)
 	}
-	if _, exists := ruleGroups[groupName][ruleName]; exists {
-		logrus.Warnf("Rule '%s' already exists in group '%s'. Skipping Add", ruleName, groupName)
+	if _, exists := rulesMap[groupName][ruleName]; exists {
+		logrus.Warnf("Rule '%s' already exists in group '%s'", ruleName, groupName)
 		return fmt.Errorf("Rule '%s' already exists in group '%s'", ruleName, groupName)
 	}
 
-	ruleNumber = ruleNumber + 1
 	rulei := ruleInfo{
 		name:       ruleName,
 		parentName: parentRuleName,
 		rule:       rule,
-		children:   make(map[string]ruleInfo, 0),
-		id:         ruleNumber,
+		children:   make([]*ruleInfo, 0),
 	}
-	rules[ruleName] = &rulei
+	rulesMap[groupName][ruleName] = &rulei
 
 	if parentRuleName == "" {
-		logrus.Debugf("Found root rule %s", ruleName)
-		ruleGroups[groupName][ruleName] = rulei
+		logrus.Debugf("Rule %s is a root rule", ruleName)
+		groupRules[groupName] = append(groupRules[groupName], &rulei)
 
 	} else {
 		logrus.Debugf("Adding child rule '%s' to parent", ruleName)
-		parentRule, exists := rules[parentRuleName]
+		parentRule, exists := rulesMap[groupName][parentRuleName]
 		if !exists {
-			return fmt.Errorf("parent rule '%s' not found", parentRuleName)
+			return fmt.Errorf("Parent rule '%s' not found", parentRuleName)
 		}
 		logrus.Debugf("Parent of %v is %v", rule, parentRule.rule)
-		pr := *parentRule
-		pr.children[ruleName] = rulei
+		parentRule.children = append(parentRule.children, &rulei)
+		logrus.Debugf(">>>>>Children %v", parentRule.children)
 	}
 	return nil
 }
@@ -87,33 +86,35 @@ func AddChild(groupName string, ruleName string, parentRuleName string, rule Rul
 //Process process all rules in a group and return a resulting map with all values returned by the rules
 func Process(groupName string, input map[string]interface{}, options ProcessOptions) (map[string]interface{}, error) {
 	logrus.Debugf(">>>Processing rules from group '%s' with input map %s", groupName, input)
-	ruleGroup, exists := ruleGroups[groupName]
+	rules, exists := groupRules[groupName]
 	if !exists {
 		return nil, fmt.Errorf("Group %s doesn't exist", groupName)
 	}
 	logrus.Debugf("Invoking all rules from group %s", groupName)
-	return processRules(ruleGroup, input, options)
+	return processRules(rules, input, options)
 }
 
-func processRules(rules map[string]ruleInfo, input map[string]interface{}, options ProcessOptions) (map[string]interface{}, error) {
+func processRules(rules []*ruleInfo, input map[string]interface{}, options ProcessOptions) (map[string]interface{}, error) {
 	output := make(map[string]interface{})
-	for k, rinfo := range rules {
+	for _, rinfo := range rules {
 		childrenOutput := make(map[string]interface{})
 		if len(rinfo.children) > 0 {
-			logrus.Debugf("Rule '%s': processing %d children rules before itself", k, len(rinfo.children))
+			logrus.Debugf("Rule '%s': processing %d children rules before itself", rinfo.name, len(rinfo.children))
 			co, err := processRules(rinfo.children, input, options)
 			if err != nil {
 				return nil, err
 			}
 			childrenOutput = co
+		} else {
+			logrus.Debugf("No children found for %v", rinfo)
 		}
 
 		rule := rinfo.rule
-		logrus.Debugf("Invoking rule '%s' '%v'", k, rule)
+		logrus.Debugf("Invoking rule '%s' '%v'", rinfo.name, rule)
 		ctx := Context{Input: input, ChildrenOutput: childrenOutput}
 		routput, err := rule(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("Error processing rule %s. err=%s", k, err)
+			return nil, fmt.Errorf("Error processing rule %s. err=%s", rinfo.name, err)
 		}
 
 		if len(routput) == 0 {
@@ -121,9 +122,8 @@ func processRules(rules map[string]ruleInfo, input map[string]interface{}, optio
 			continue
 		}
 
-		if options.AddRuleInfo {
+		if options.AddRuleInfo && options.FlattenOutput {
 			routput["_rule"] = rinfo.name
-			routput["_id"] = rinfo.id
 		}
 
 		for k, v := range childrenOutput {
@@ -135,7 +135,7 @@ func processRules(rules map[string]ruleInfo, input map[string]interface{}, optio
 	return output, nil
 }
 
-func mergeMaps(rinfo ruleInfo, sourceMap map[string]interface{}, destMapP *map[string]interface{}, options ProcessOptions) {
+func mergeMaps(rinfo *ruleInfo, sourceMap map[string]interface{}, destMapP *map[string]interface{}, options ProcessOptions) {
 	destMap := *destMapP
 	logrus.Debugf("Merging map %v to %v", sourceMap, destMap)
 	if len(sourceMap) > 0 {
