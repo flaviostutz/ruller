@@ -78,5 +78,26 @@ func main() {
 		panic(err)
 	}
 
+	for a := 0; a < 100; a++ {
+		err = ruller.AddChild("test", fmt.Sprintf("rule2.2-%d", a), "rule2.2", func(ctx ruller.Context) (map[string]interface{}, error) {
+			output := make(map[string]interface{})
+			output["opt"] = "any"
+			return output, nil
+		})
+		if err != nil {
+			panic(err)
+		}
+		for b := 0; b < 20; b++ {
+			err = ruller.AddChild("test", fmt.Sprintf("rule2.2-%d-%d", a, b), fmt.Sprintf("rule2.2-%d", a), func(ctx ruller.Context) (map[string]interface{}, error) {
+				output := make(map[string]interface{})
+				output["opt"] = "any"
+				return output, nil
+			})
+			if err != nil {
+				panic(err)
+			}
+		}
+	}
+
 	ruller.StartServer()
 }

@@ -14,6 +14,7 @@ import (
 var (
 	ruleGroups = make(map[string]map[string]ruleInfo)
 	rules      = make(map[string]*ruleInfo)
+	ruleNumber = 1
 )
 
 //Rule Function that defines a rule. The rule accepts a map as input and returns a map as output. The output map maybe nil
@@ -28,6 +29,7 @@ type Context struct {
 //ProcessOptions options for rule process
 type ProcessOptions struct {
 	MergeKeepFirst bool
+	AddRuleInfo    bool
 	FlattenOutput  bool
 }
 
@@ -36,6 +38,7 @@ type ruleInfo struct {
 	parentName string
 	rule       Rule
 	children   map[string]ruleInfo
+	id         int
 }
 
 //Add adds a rule implementation to a group
@@ -54,11 +57,13 @@ func AddChild(groupName string, ruleName string, parentRuleName string, rule Rul
 		return fmt.Errorf("Rule '%s' already exists in group '%s'", ruleName, groupName)
 	}
 
+	ruleNumber = ruleNumber + 1
 	rulei := ruleInfo{
 		name:       ruleName,
 		parentName: parentRuleName,
 		rule:       rule,
 		children:   make(map[string]ruleInfo, 0),
+		id:         ruleNumber,
 	}
 	rules[ruleName] = &rulei
 
@@ -109,6 +114,16 @@ func processRules(rules map[string]ruleInfo, input map[string]interface{}, optio
 		routput, err := rule(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("Error processing rule %s. err=%s", k, err)
+		}
+
+		if len(routput) == 0 {
+			logrus.Debugf("Rule '%s' has no output", rinfo.name)
+			continue
+		}
+
+		if options.AddRuleInfo {
+			routput["_rule"] = rinfo.name
+			routput["_id"] = rinfo.id
 		}
 
 		for k, v := range childrenOutput {
@@ -209,33 +224,28 @@ func processRuleGroup(w http.ResponseWriter, r *http.Request) {
 
 	logrus.Debugf("input=%s", pinput)
 
-	mergeKeepFirst, exists := pinput["_mergeKeepFirst"]
-	keepFirst := true
-	if exists {
-		switch mergeKeepFirst.(type) {
-		case bool:
-			keepFirst = mergeKeepFirst.(bool)
-		default:
-			logrus.Warnf("Input attribute '_mergeKeepFirst' must be boolean")
-			http.Error(w, "Error processing rules", 500)
-			return
-		}
+	keepFirst, err := getBool(pinput, "_mergeKeepFirst", true)
+	if err != nil {
+		logrus.Warnf(err.Error())
+		http.Error(w, "Error processing rules", 500)
+		return
 	}
 
-	flattenOpt, exists1 := pinput["_flatten"]
-	flatten := true
-	if exists1 {
-		switch flattenOpt.(type) {
-		case bool:
-			flatten = flattenOpt.(bool)
-		default:
-			logrus.Warnf("Input attribute '_flatten' must be boolean")
-			http.Error(w, "Error processing rules", 500)
-			return
-		}
+	flatten, err := getBool(pinput, "_flatten", true)
+	if err != nil {
+		logrus.Warnf(err.Error())
+		http.Error(w, "Error processing rules", 500)
+		return
 	}
 
-	poutput, err := Process(groupName, pinput, ProcessOptions{MergeKeepFirst: keepFirst, FlattenOutput: flatten})
+	info, err := getBool(pinput, "_info", true)
+	if err != nil {
+		logrus.Warnf(err.Error())
+		http.Error(w, "Error processing rules", 500)
+		return
+	}
+
+	poutput, err := Process(groupName, pinput, ProcessOptions{MergeKeepFirst: keepFirst, FlattenOutput: flatten, AddRuleInfo: info})
 	if err != nil {
 		logrus.Warnf("Error processing rules. err=%s", err)
 		http.Error(w, "Error processing rules", 500)
@@ -251,4 +261,18 @@ func processRuleGroup(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error writing response", 500)
 		return
 	}
+}
+
+func getBool(vmap map[string]interface{}, vkey string, defaultValue bool) (bool, error) {
+	valueOpt, exists1 := vmap[vkey]
+	value := defaultValue
+	if exists1 {
+		switch valueOpt.(type) {
+		case bool:
+			value = valueOpt.(bool)
+		default:
+			return false, fmt.Errorf("'%s' must be a boolean value", vkey)
+		}
+	}
+	return value, nil
 }

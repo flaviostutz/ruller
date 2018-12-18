@@ -8,5 +8,5 @@ services:
     ports:
       - 3000:3000
     environment:
-      - LOG_LEVEL=debug
+      - LOG_LEVEL=info
 
