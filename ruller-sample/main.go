@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"math/rand"
+	"net/http"
 	"ruller"
 
 	"github.com/Sirupsen/logrus"
@@ -68,6 +69,12 @@ func main() {
 		panic(err)
 	}
 
+	ruller.SetRequestFilter(func(r *http.Request, input map[string]interface{}) error {
+		logrus.Debugf("FILTER: handling http request. input=%s", input)
+		input["_something"] = "test"
+		return nil
+	})
+
 	err = ruller.AddChild("test", "rule2.2", "rule2", func(ctx ruller.Context) (map[string]interface{}, error) {
 		output := make(map[string]interface{})
 		output["rule2.2-type"] = "any"
@@ -78,7 +85,7 @@ func main() {
 		panic(err)
 	}
 
-	for a := 0; a < 100; a++ {
+	for a := 0; a < 10; a++ {
 		err = ruller.AddChild("test", fmt.Sprintf("rule2.2-%d", a), "rule2.2", func(ctx ruller.Context) (map[string]interface{}, error) {
 			output := make(map[string]interface{})
 			output["opt1"] = "any1"
@@ -87,7 +94,7 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		for b := 0; b < 5; b++ {
+		for b := 0; b < 1; b++ {
 			err = ruller.AddChild("test", fmt.Sprintf("rule2.2-%d-%d", a, b), fmt.Sprintf("rule2.2-%d", a), func(ctx ruller.Context) (map[string]interface{}, error) {
 				output := make(map[string]interface{})
 				output["opt2"] = "any2"
@@ -96,7 +103,7 @@ func main() {
 			if err != nil {
 				panic(err)
 			}
-			for c := 0; c < 2; c++ {
+			for c := 0; c < 1; c++ {
 				err = ruller.AddChild("test", fmt.Sprintf("rule2.2-%d-%d-%d", a, b, c), fmt.Sprintf("rule2.2-%d-%d", a, b), func(ctx ruller.Context) (map[string]interface{}, error) {
 					output := make(map[string]interface{})
 					output["opt3"] = "any3"

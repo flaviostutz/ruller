@@ -15,8 +15,9 @@ import (
 )
 
 var (
-	groupRules = make(map[string][]*ruleInfo)
-	rulesMap   = make(map[string]map[string]*ruleInfo)
+	groupRules                  = make(map[string][]*ruleInfo)
+	rulesMap                    = make(map[string]map[string]*ruleInfo)
+	requestFilter RequestFilter = func(*http.Request, map[string]interface{}) error { return nil }
 )
 
 var rulesProcessingHist = prometheus.NewHistogramVec(prometheus.HistogramOpts{
@@ -37,6 +38,9 @@ var groupRuleCount = prometheus.NewCounterVec(prometheus.CounterOpts{
 
 //Rule Function that defines a rule. The rule accepts a map as input and returns a map as output. The output map maybe nil
 type Rule func(Context) (map[string]interface{}, error)
+
+//RequestFilter Function called on every HTTP call
+type RequestFilter func(*http.Request, map[string]interface{}) error
 
 //Context used as input for rule processing
 type Context struct {
@@ -59,6 +63,11 @@ type ruleInfo struct {
 	parentName string
 	rule       Rule
 	children   []*ruleInfo
+}
+
+//SetRequestFilter set the function that will be called at every call
+func SetRequestFilter(rf RequestFilter) {
+	requestFilter = rf
 }
 
 //Add adds a rule implementation to a group
@@ -273,6 +282,12 @@ func processRuleGroup(w http.ResponseWriter, r *http.Request) {
 		logrus.Warnf(err.Error())
 		http.Error(w, "Error processing rules", 500)
 		return
+	}
+
+	err = requestFilter(r, pinput)
+	if err != nil {
+		logrus.Warnf("Error processing rules. err=%s", err)
+		http.Error(w, "Error processing rules", 500)
 	}
 
 	poutput, err := Process(groupName, pinput, ProcessOptions{MergeKeepFirst: keepFirst, FlattenOutput: flatten, AddRuleInfo: info})
