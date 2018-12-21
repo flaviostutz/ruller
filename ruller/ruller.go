@@ -195,6 +195,9 @@ func processRules(rules []*ruleInfo, input map[string]interface{}, options Proce
 		if err != nil {
 			return nil, fmt.Errorf("Error processing rule %s. err=%s", rinfo.name, err)
 		}
+		if routput == nil {
+			routput = make(map[string]interface{})
+		}
 
 		if len(routput) == 0 {
 			logrus.Debugf("Rule '%s' has no output", rinfo.name)
