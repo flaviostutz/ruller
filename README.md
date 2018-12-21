@@ -105,6 +105,16 @@ curl -X POST \
 
 * "_info" - true|false. If true, will add attribute "_rule" with the name of the rule that generated the node on the result tree (if not using flat map as result). Default to true
 
+## Estimated Country/City based on request IPs
+
+* If you define a geolite2 database using "--geolite2-db", Ruller will use GeoLite to determine City and Country names corresponding to client IP. It will determine the source IP by first looking at the "X-Forwarded-For" header. If not found present, it will use the IP of the direct requestor.
+* When Geolite is activated, the following attributes will be placed on input:
+   * "\_ip\_country": Country name
+   * "\_ip\_city": City name
+   * "\_ip\_longitude": Longitude
+   * "\_ip\_latitude: Latitude
+   * "\_ip\_accuracy_radius: Accuracy radius
+
 ## More resources
 
 * http://github.com/flaviostutz/ruller-sample-dsl - an example on how to build a DSL tool to generate Go Ruller code from an specific rule domain and build a Docker container with the REST api for your compiled rules

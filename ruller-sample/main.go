@@ -62,6 +62,7 @@ func main() {
 		} else {
 			output["category"] = "young rule2.1"
 		}
+		output["city"] = ctx.Input["_ip_city"]
 		output["rule2.1"] = true
 		return output, nil
 	})
@@ -70,7 +71,7 @@ func main() {
 	}
 
 	ruller.SetRequestFilter(func(r *http.Request, input map[string]interface{}) error {
-		logrus.Debugf("FILTER: handling http request. input=%s", input)
+		logrus.Debugf("filtering request. input=%s", input)
 		input["_something"] = "test"
 		return nil
 	})

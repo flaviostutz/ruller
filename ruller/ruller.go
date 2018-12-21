@@ -5,11 +5,14 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/gorilla/mux"
+	geoip2 "github.com/oschwald/geoip2-golang"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -18,6 +21,7 @@ var (
 	groupRules                  = make(map[string][]*ruleInfo)
 	rulesMap                    = make(map[string]map[string]*ruleInfo)
 	requestFilter RequestFilter = func(*http.Request, map[string]interface{}) error { return nil }
+	geodb                       = (*geoip2.Reader)(nil)
 )
 
 var rulesProcessingHist = prometheus.NewHistogramVec(prometheus.HistogramOpts{
@@ -205,6 +209,7 @@ func mergeMaps(rinfo *ruleInfo, sourceMap map[string]interface{}, destMapP *map[
 func StartServer() error {
 	listenPort := flag.Int("listen-port", 3000, "REST API server listen port")
 	listenIP := flag.String("listen-address", "0.0.0.0", "REST API server listen ip address")
+	golitedb := flag.String("geolite2-db", "", "Geolite mmdb database file. If not defined, localization info based on IP will be disabled")
 	logLevel := flag.String("log-level", "info", "debug, info, warning or error")
 	flag.Parse()
 
@@ -225,8 +230,22 @@ func StartServer() error {
 	prometheus.MustRegister(rulesProcessingHist)
 	prometheus.MustRegister(groupRuleCount)
 
+	gf := *golitedb
+	if gf == "" {
+		logrus.Debugf("Geolite database file not found. Localization capabilities based on IP will be disabled")
+	} else {
+		logrus.Debugf("Loading GeoIP2 database")
+		gdb, err := geoip2.Open(gf)
+		if err != nil {
+			return err
+		}
+		geodb = gdb
+		defer geodb.Close()
+		logrus.Infof("GeoIP2 database loaded")
+	}
+
 	router := mux.NewRouter()
-	router.HandleFunc("/rules/{groupName}", processRuleGroup).Methods("POST")
+	router.HandleFunc("/rules/{groupName}", handleRuleGroup).Methods("POST")
 	router.Handle("/metrics", promhttp.Handler())
 	listen := fmt.Sprintf("%s:%d", *listenIP, *listenPort)
 	logrus.Infof("Listening at %s", listen)
@@ -237,7 +256,7 @@ func StartServer() error {
 	return nil
 }
 
-func processRuleGroup(w http.ResponseWriter, r *http.Request) {
+func handleRuleGroup(w http.ResponseWriter, r *http.Request) {
 	logrus.Debugf("processRuleGroup r=%v", r)
 	params := mux.Vars(r)
 
@@ -258,6 +277,36 @@ func processRuleGroup(w http.ResponseWriter, r *http.Request) {
 			logrus.Warnf("Error parsing json body to map. err=%s", err)
 			http.Error(w, "Invalid input JSON. err="+err.Error(), 500)
 			return
+		}
+	}
+
+	if geodb != nil {
+		ipStr := r.Header.Get("X-Forwarded-For")
+		if ipStr == "" {
+			ra := strings.Split(r.RemoteAddr, ":")
+			if len(ra) > 0 {
+				ipStr = ra[0]
+			}
+		}
+		if ipStr != "" {
+			ip := net.ParseIP(ipStr)
+			start := time.Now()
+			ipRecord, err := geodb.City(ip)
+			logrus.Debugf("Time to find getIp data: %s", time.Since(start))
+			if err != nil {
+				logrus.Warnf("Couldn't find geo info for ip %s. err=%s", ipStr, err)
+				pinput["_ip_country"] = ""
+				pinput["_ip_city"] = ""
+				pinput["_ip_latitude"] = 0
+				pinput["_ip_longitude"] = 0
+				pinput["_ip_accuracy_radius"] = 99999999
+			} else {
+				pinput["_ip_country"] = ipRecord.Country.Names["en"]
+				pinput["_ip_city"] = ipRecord.City.Names["en"]
+				pinput["_ip_latitude"] = ipRecord.Location.Latitude
+				pinput["_ip_longitude"] = ipRecord.Location.Longitude
+				pinput["_ip_accuracy_radius"] = ipRecord.Location.AccuracyRadius
+			}
 		}
 	}
 

@@ -12,6 +12,7 @@ import (
 	_ "text/template"
 
 	_ "github.com/Sirupsen/logrus"
+	_ "github.com/oschwald/geoip2-golang"
 
 	_ "github.com/prometheus/client_golang/prometheus"
 	_ "github.com/prometheus/client_golang/prometheus/promhttp"
