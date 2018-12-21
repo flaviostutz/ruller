@@ -18,11 +18,14 @@ import (
 )
 
 var (
-	groupRules                       = make(map[string][]*ruleInfo)
-	requiredInputNames               = make(map[string]map[string]bool)
-	rulesMap                         = make(map[string]map[string]*ruleInfo)
-	requestFilter      RequestFilter = func(*http.Request, map[string]interface{}) error { return nil }
-	geodb                            = (*geoip2.Reader)(nil)
+	groupRules                        = make(map[string][]*ruleInfo)
+	requiredInputNames                = make(map[string]map[string]bool)
+	rulesMap                          = make(map[string]map[string]*ruleInfo)
+	requestFilter      RequestFilter  = func(r *http.Request, input map[string]interface{}) error { return nil }
+	responseFilter     ResponseFilter = func(w http.ResponseWriter, input map[string]interface{}, output map[string]interface{}, outBytes []byte) (bool, error) {
+		return false, nil
+	}
+	geodb = (*geoip2.Reader)(nil)
 )
 
 var rulesProcessingHist = prometheus.NewHistogramVec(prometheus.HistogramOpts{
@@ -44,8 +47,15 @@ var groupRuleCount = prometheus.NewCounterVec(prometheus.CounterOpts{
 //Rule Function that defines a rule. The rule accepts a map as input and returns a map as output. The output map maybe nil
 type Rule func(Context) (map[string]interface{}, error)
 
-//RequestFilter Function called on every HTTP call
-type RequestFilter func(*http.Request, map[string]interface{}) error
+//RequestFilter Function called on every HTTP call before rules processing.
+//params: request, input attributes
+//returns: error
+type RequestFilter func(r *http.Request, input map[string]interface{}) error
+
+//ResponseFilter Function called on every HTTP call after rules processing.
+//params: http response writer, input attribute, output attributes.
+//returns: bool true if ruller should interrupt renderization and rely on what the filter did, error
+type ResponseFilter func(w http.ResponseWriter, input map[string]interface{}, output map[string]interface{}, outBytes []byte) (bool, error)
 
 //Context used as input for rule processing
 type Context struct {
@@ -73,6 +83,11 @@ type ruleInfo struct {
 //SetRequestFilter set the function that will be called at every call
 func SetRequestFilter(rf RequestFilter) {
 	requestFilter = rf
+}
+
+//SetResponseFilter set the function that will be called at every call with output. If returns true, won't perform the default JSON renderization
+func SetResponseFilter(rf ResponseFilter) {
+	responseFilter = rf
 }
 
 //AddRequiredInput adds a input attribute name that is required before processing the rules
@@ -359,6 +374,7 @@ func handleRuleGroup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	logrus.Debugf("Calling request filter")
 	err = requestFilter(r, pinput)
 	if err != nil {
 		logrus.Warnf("Error processing rules. err=%s", err)
@@ -375,7 +391,18 @@ func handleRuleGroup(w http.ResponseWriter, r *http.Request) {
 	logrus.Debugf("Parsing output map to json. output=%s", poutput)
 	w.Header().Set("Content-Type", "application/json")
 	outBytes, err := json.Marshal(poutput)
-	_, err1 := w.Write(outBytes)
+
+	logrus.Debugf("Calling response filter")
+	interrupt, err1 := responseFilter(w, pinput, poutput, outBytes)
+	if err1 != nil {
+		logrus.Warnf("Error processing rules. err=%s", err1)
+		http.Error(w, "Error processing rules", 500)
+	}
+	if interrupt {
+		return
+	}
+
+	_, err1 = w.Write(outBytes)
 	if err1 != nil {
 		logrus.Warnf("Error writing response. err=%s", err1)
 		http.Error(w, "Error writing response", 500)

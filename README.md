@@ -118,6 +118,16 @@ curl -X POST \
    * "\_ip\_latitude: Latitude
    * "\_ip\_accuracy_radius: Accuracy radius
 
+## Request/Response filtering
+
+* ```ruller.setRequestFilter(func(r *http.Request, input map[string]interface{}) error { return nil })```
+   * You can verify http request attributes and change input map as you need
+
+* ```func(w http.ResponseWriter, input map[string]interface{}, output map[string]interface{}, outBytes []byte) (bool, error) {return false, nil}```
+   * You can verify the input and output map and write something to the response. If you return true, the default JSON marshal that ruller performs will be skipped.
+
+* See an example at ```ruller-sample/main.go```
+
 ## More resources
 
 * http://github.com/flaviostutz/ruller-sample-dsl - an example on how to build a DSL tool to generate Go Ruller code from an specific rule domain and build a Docker container with the REST api for your compiled rules

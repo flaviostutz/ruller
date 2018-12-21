@@ -78,6 +78,17 @@ func main() {
 		return nil
 	})
 
+	ruller.SetResponseFilter(func(w http.ResponseWriter, input map[string]interface{}, output map[string]interface{}, outBytes []byte) (bool, error) {
+		logrus.Debugf("filtering response. input=%s", input)
+		output["filter-attribute"] = "added by sample filter"
+		if input["_something"] == "test" {
+			w.Write([]byte("{\"a\":"))
+			w.Write(outBytes)
+			w.Write([]byte("}"))
+		}
+		return true, nil
+	})
+
 	err = ruller.AddChild("test", "rule2.2", "rule2", func(ctx ruller.Context) (map[string]interface{}, error) {
 		output := make(map[string]interface{})
 		output["rule2.2-type"] = "any"
