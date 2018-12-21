@@ -19,7 +19,7 @@ import (
 
 var (
 	groupRules                       = make(map[string][]*ruleInfo)
-	requiredInputNames               = make(map[string]bool)
+	requiredInputNames               = make(map[string]map[string]bool)
 	rulesMap                         = make(map[string]map[string]*ruleInfo)
 	requestFilter      RequestFilter = func(*http.Request, map[string]interface{}) error { return nil }
 	geodb                            = (*geoip2.Reader)(nil)
@@ -76,8 +76,14 @@ func SetRequestFilter(rf RequestFilter) {
 }
 
 //AddRequiredInput adds a input attribute name that is required before processing the rules
-func AddRequiredInput(inputName string) {
-	requiredInputNames[inputName] = true
+func AddRequiredInput(groupName string, inputName string) {
+	logrus.Debugf("Adding required input. group=%s. attribute=%s", groupName, inputName)
+	rgi, exists := requiredInputNames[groupName]
+	if !exists {
+		rgi = make(map[string]bool)
+		requiredInputNames[groupName] = rgi
+	}
+	requiredInputNames[groupName][inputName] = true
 }
 
 //Add adds a rule implementation to a group
@@ -127,8 +133,8 @@ func Process(groupName string, input map[string]interface{}, options ProcessOpti
 
 	logrus.Debugf("Validating required input attributes")
 	missingInput := ""
-	for k := range input {
-		_, exists := requiredInputNames[k]
+	for k := range requiredInputNames[groupName] {
+		_, exists := input[k]
 		if !exists {
 			missingInput = missingInput + " " + k
 		}

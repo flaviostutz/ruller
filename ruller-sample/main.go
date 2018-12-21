@@ -30,6 +30,8 @@ func main() {
 		panic(err)
 	}
 
+	ruller.AddRequiredInput("test", "sampleinput")
+
 	err = ruller.AddChild("test", "rule1.1", "rule1", func(ctx ruller.Context) (map[string]interface{}, error) {
 		output := make(map[string]interface{})
 		output["rule1.1-mydata"] = "myvalue"
