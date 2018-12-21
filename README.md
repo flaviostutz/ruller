@@ -105,9 +105,12 @@ curl -X POST \
 
 * "_info" - true|false. If true, will add attribute "_rule" with the name of the rule that generated the node on the result tree (if not using flat map as result). Default to true
 
-## Estimated Country/City based on request IPs
+## Available input parameters to rules
 
-* If you define a geolite2 database using "--geolite2-db", Ruller will use GeoLite to determine City and Country names corresponding to client IP. It will determine the source IP by first looking at the "X-Forwarded-For" header. If not found present, it will use the IP of the direct requestor.
+* The POST body JSON elements will be converted to a map and used as input parameters
+* Additionally, "\_remote\_ip" is set with client remote address
+
+* If you define a geolite2 database using "--geolite2-db", Ruller will use GeoLite to determine City and Country names corresponding to client IP. It will determine the source IP by first looking at the "X-Forwarded-For" header. If not present, it will use the IP of the direct requestor.
 * When Geolite is activated, the following attributes will be placed on input:
    * "\_ip\_country": Country name
    * "\_ip\_city": City name

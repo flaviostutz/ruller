@@ -289,6 +289,7 @@ func handleRuleGroup(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		if ipStr != "" {
+			pinput["_remote_ip"] = ipStr
 			ip := net.ParseIP(ipStr)
 			start := time.Now()
 			ipRecord, err := geodb.City(ip)
