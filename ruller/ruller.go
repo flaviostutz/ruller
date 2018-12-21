@@ -18,10 +18,11 @@ import (
 )
 
 var (
-	groupRules                  = make(map[string][]*ruleInfo)
-	rulesMap                    = make(map[string]map[string]*ruleInfo)
-	requestFilter RequestFilter = func(*http.Request, map[string]interface{}) error { return nil }
-	geodb                       = (*geoip2.Reader)(nil)
+	groupRules                       = make(map[string][]*ruleInfo)
+	requiredInputNames               = make(map[string]bool)
+	rulesMap                         = make(map[string]map[string]*ruleInfo)
+	requestFilter      RequestFilter = func(*http.Request, map[string]interface{}) error { return nil }
+	geodb                            = (*geoip2.Reader)(nil)
 )
 
 var rulesProcessingHist = prometheus.NewHistogramVec(prometheus.HistogramOpts{
@@ -74,6 +75,11 @@ func SetRequestFilter(rf RequestFilter) {
 	requestFilter = rf
 }
 
+//AddRequiredInput adds a input attribute name that is required before processing the rules
+func AddRequiredInput(inputName string) {
+	requiredInputNames[inputName] = true
+}
+
 //Add adds a rule implementation to a group
 func Add(groupName string, ruleName string, rule Rule) error {
 	return AddChild(groupName, ruleName, "", rule)
@@ -118,6 +124,19 @@ func AddChild(groupName string, ruleName string, parentRuleName string, rule Rul
 //Process process all rules in a group and return a resulting map with all values returned by the rules
 func Process(groupName string, input map[string]interface{}, options ProcessOptions) (map[string]interface{}, error) {
 	logrus.Debugf(">>>Processing rules from group '%s' with input map %s", groupName, input)
+
+	logrus.Debugf("Validating required input attributes")
+	missingInput := ""
+	for k := range input {
+		_, exists := requiredInputNames[k]
+		if !exists {
+			missingInput = missingInput + " " + k
+		}
+	}
+	if missingInput != "" {
+		return nil, fmt.Errorf("Missing required input attributes: %s", missingInput)
+	}
+
 	rules, exists := groupRules[groupName]
 	if !exists {
 		return nil, fmt.Errorf("Group %s doesn't exist", groupName)
@@ -343,7 +362,7 @@ func handleRuleGroup(w http.ResponseWriter, r *http.Request) {
 	poutput, err := Process(groupName, pinput, ProcessOptions{MergeKeepFirst: keepFirst, FlattenOutput: flatten, AddRuleInfo: info})
 	if err != nil {
 		logrus.Warnf("Error processing rules. err=%s", err)
-		http.Error(w, "Error processing rules", 500)
+		http.Error(w, fmt.Sprintf("Error processing rules: %s", err), 500)
 		return
 	}
 
