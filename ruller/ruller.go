@@ -323,35 +323,31 @@ func handleRuleGroup(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if geodb != nil {
-		ipStr := r.Header.Get("X-Forwarded-For")
-		if ipStr == "" {
-			ra := strings.Split(r.RemoteAddr, ":")
-			if len(ra) > 0 {
-				ipStr = ra[0]
-			}
+	ipStr := r.Header.Get("X-Forwarded-For")
+	if ipStr == "" {
+		ra := strings.Split(r.RemoteAddr, ":")
+		if len(ra) > 0 {
+			ipStr = ra[0]
 		}
-		pinput["_remote_ip"] = "0.0.0.0"
-		if ipStr != "" {
-			pinput["_remote_ip"] = ipStr
-			ip := net.ParseIP(ipStr)
-			start := time.Now()
-			ipRecord, err := geodb.City(ip)
-			logrus.Debugf("Time to find getIp data: %s", time.Since(start))
-			if err != nil {
-				logrus.Warnf("Couldn't find geo info for ip %s. err=%s", ipStr, err)
-				pinput["_ip_country"] = ""
-				pinput["_ip_city"] = ""
-				pinput["_ip_latitude"] = 0
-				pinput["_ip_longitude"] = 0
-				pinput["_ip_accuracy_radius"] = 99999999
-			} else {
-				pinput["_ip_country"] = ipRecord.Country.Names["en"]
-				pinput["_ip_city"] = ipRecord.City.Names["en"]
-				pinput["_ip_latitude"] = ipRecord.Location.Latitude
-				pinput["_ip_longitude"] = ipRecord.Location.Longitude
-				pinput["_ip_accuracy_radius"] = ipRecord.Location.AccuracyRadius
-			}
+	}
+	if ipStr == "" {
+		ipStr = "0.0.0.0"
+	}
+	pinput["_remote_ip"] = ipStr
+	if geodb != nil {
+		pinput["_remote_ip"] = ipStr
+		ip := net.ParseIP(ipStr)
+		start := time.Now()
+		ipRecord, err := geodb.City(ip)
+		logrus.Debugf("Time to find getIp data: %s", time.Since(start))
+		if err != nil {
+			logrus.Warnf("Couldn't find geo info for ip %s. err=%s", ipStr, err)
+		} else {
+			pinput["_ip_country"] = ipRecord.Country.Names["en"]
+			pinput["_ip_city"] = ipRecord.City.Names["en"]
+			pinput["_ip_latitude"] = ipRecord.Location.Latitude
+			pinput["_ip_longitude"] = ipRecord.Location.Longitude
+			pinput["_ip_accuracy_radius"] = ipRecord.Location.AccuracyRadius
 		}
 	}
 
