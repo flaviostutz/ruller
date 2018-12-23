@@ -331,6 +331,7 @@ func handleRuleGroup(w http.ResponseWriter, r *http.Request) {
 				ipStr = ra[0]
 			}
 		}
+		pinput["_remote_ip"] = "0.0.0.0"
 		if ipStr != "" {
 			pinput["_remote_ip"] = ipStr
 			ip := net.ParseIP(ipStr)
