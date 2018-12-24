@@ -166,20 +166,20 @@ func Process(groupName string, input map[string]interface{}, options ProcessOpti
 		v, exists := input[k]
 		if !exists {
 			missingInput = missingInput + " " + k
-		}
-
-		actualType := reflect.TypeOf(v)
-		if requiredType == Numeric {
-			if actualType.Kind() != reflect.Float64 {
-				wrongTypeInput = fmt.Sprintf("%s%s must be of type %v; ", wrongTypeInput, k, "numeric")
-			}
-		} else if requiredType == String {
-			if actualType.Kind() != reflect.String {
-				wrongTypeInput = fmt.Sprintf("%s%s must be of type %v; ", wrongTypeInput, k, "string")
-			}
-		} else if requiredType == Bool {
-			if actualType.Kind() != reflect.Bool {
-				wrongTypeInput = fmt.Sprintf("%s%s must be of type %v; ", wrongTypeInput, k, "bool")
+		} else {
+			actualType := reflect.TypeOf(v)
+			if requiredType == Numeric {
+				if actualType.Kind() != reflect.Float64 {
+					wrongTypeInput = fmt.Sprintf("%s%s must be of type %v; ", wrongTypeInput, k, "numeric")
+				}
+			} else if requiredType == String {
+				if actualType.Kind() != reflect.String {
+					wrongTypeInput = fmt.Sprintf("%s%s must be of type %v; ", wrongTypeInput, k, "string")
+				}
+			} else if requiredType == Bool {
+				if actualType.Kind() != reflect.Bool {
+					wrongTypeInput = fmt.Sprintf("%s%s must be of type %v; ", wrongTypeInput, k, "bool")
+				}
 			}
 		}
 	}
