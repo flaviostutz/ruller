@@ -374,6 +374,11 @@ func handleRuleGroup(w http.ResponseWriter, r *http.Request) {
 		logrus.Debugf("Time to find getIp data: %s", time.Since(start))
 		if err != nil {
 			logrus.Warnf("Couldn't find geo info for ip %s. err=%s", ipStr, err)
+			pinput["_ip_country"] = ""
+			pinput["_ip_city"] = ""
+			pinput["_ip_latitude"] = 0
+			pinput["_ip_longitude"] = 0
+			pinput["_ip_accuracy_radius"] = 999999
 		} else {
 			pinput["_ip_country"] = ipRecord.Country.Names["en"]
 			pinput["_ip_city"] = ipRecord.City.Names["en"]
