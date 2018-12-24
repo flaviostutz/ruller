@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"go/types"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -19,7 +20,7 @@ import (
 
 var (
 	groupRules                        = make(map[string][]*ruleInfo)
-	requiredInputNames                = make(map[string]map[string]bool)
+	requiredInputNames                = make(map[string]map[string]types.BasicKind)
 	rulesMap                          = make(map[string]map[string]*ruleInfo)
 	requestFilter      RequestFilter  = func(r *http.Request, input map[string]interface{}) error { return nil }
 	responseFilter     ResponseFilter = func(w http.ResponseWriter, input map[string]interface{}, output map[string]interface{}, outBytes []byte) (bool, error) {
@@ -91,14 +92,14 @@ func SetResponseFilter(rf ResponseFilter) {
 }
 
 //AddRequiredInput adds a input attribute name that is required before processing the rules
-func AddRequiredInput(groupName string, inputName string) {
+func AddRequiredInput(groupName string, inputName string, tp types.BasicKind) {
 	logrus.Debugf("Adding required input. group=%s. attribute=%s", groupName, inputName)
 	rgi, exists := requiredInputNames[groupName]
 	if !exists {
-		rgi = make(map[string]bool)
+		rgi = make(map[string]types.BasicKind)
 		requiredInputNames[groupName] = rgi
 	}
-	requiredInputNames[groupName][inputName] = true
+	requiredInputNames[groupName][inputName] = tp
 }
 
 //Add adds a rule implementation to a group
@@ -148,14 +149,31 @@ func Process(groupName string, input map[string]interface{}, options ProcessOpti
 
 	logrus.Debugf("Validating required input attributes")
 	missingInput := ""
-	for k := range requiredInputNames[groupName] {
-		_, exists := input[k]
+	wrongTypeInput := ""
+	for k, tp := range requiredInputNames[groupName] {
+		v, exists := input[k]
 		if !exists {
 			missingInput = missingInput + " " + k
+		} else {
+			switch v.(type) {
+			case float64:
+				if tp != types.Float64 {
+					wrongTypeInput = wrongTypeInput + k + " must be a float64; "
+				}
+			case int:
+				if tp != types.Int {
+					wrongTypeInput = wrongTypeInput + k + " must be an int; "
+				}
+			default:
+			}
+
 		}
 	}
 	if missingInput != "" {
 		return nil, fmt.Errorf("Missing required input attributes: %s", missingInput)
+	}
+	if wrongTypeInput != "" {
+		return nil, fmt.Errorf("Input attribute with incorrect type: %s", missingInput)
 	}
 
 	rules, exists := groupRules[groupName]
