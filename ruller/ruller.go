@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"go/types"
 	"io/ioutil"
 	"net"
 	"net/http"
+	"reflect"
 	"strings"
 	"time"
 
@@ -18,9 +18,21 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
+//InputType input type for required input names declaration
+type InputType int
+
+const (
+	//String input type
+	String InputType = iota
+	//Numeric input type
+	Numeric
+	//Bool input type
+	Bool
+)
+
 var (
 	groupRules                        = make(map[string][]*ruleInfo)
-	requiredInputNames                = make(map[string]map[string]types.BasicKind)
+	requiredInputNames                = make(map[string]map[string]InputType)
 	rulesMap                          = make(map[string]map[string]*ruleInfo)
 	requestFilter      RequestFilter  = func(r *http.Request, input map[string]interface{}) error { return nil }
 	responseFilter     ResponseFilter = func(w http.ResponseWriter, input map[string]interface{}, output map[string]interface{}, outBytes []byte) (bool, error) {
@@ -92,14 +104,14 @@ func SetResponseFilter(rf ResponseFilter) {
 }
 
 //AddRequiredInput adds a input attribute name that is required before processing the rules
-func AddRequiredInput(groupName string, inputName string, tp types.BasicKind) {
+func AddRequiredInput(groupName string, inputName string, it InputType) {
 	logrus.Debugf("Adding required input. group=%s. attribute=%s", groupName, inputName)
 	rgi, exists := requiredInputNames[groupName]
 	if !exists {
-		rgi = make(map[string]types.BasicKind)
+		rgi = make(map[string]InputType)
 		requiredInputNames[groupName] = rgi
 	}
-	requiredInputNames[groupName][inputName] = tp
+	requiredInputNames[groupName][inputName] = it
 }
 
 //Add adds a rule implementation to a group
@@ -150,30 +162,32 @@ func Process(groupName string, input map[string]interface{}, options ProcessOpti
 	logrus.Debugf("Validating required input attributes")
 	missingInput := ""
 	wrongTypeInput := ""
-	for k, tp := range requiredInputNames[groupName] {
+	for k, requiredType := range requiredInputNames[groupName] {
 		v, exists := input[k]
 		if !exists {
 			missingInput = missingInput + " " + k
-		} else {
-			switch v.(type) {
-			case float64:
-				if tp != types.Float64 {
-					wrongTypeInput = wrongTypeInput + k + " must be a float64; "
-				}
-			case int:
-				if tp != types.Int {
-					wrongTypeInput = wrongTypeInput + k + " must be an int; "
-				}
-			default:
-			}
+		}
 
+		actualType := reflect.TypeOf(v)
+		if requiredType == Numeric {
+			if actualType.Kind() != reflect.Float64 {
+				wrongTypeInput = fmt.Sprintf("%s%s must be of type %v; ", wrongTypeInput, k, "numeric")
+			}
+		} else if requiredType == String {
+			if actualType.Kind() != reflect.String {
+				wrongTypeInput = fmt.Sprintf("%s%s must be of type %v; ", wrongTypeInput, k, "string")
+			}
+		} else if requiredType == Bool {
+			if actualType.Kind() != reflect.Bool {
+				wrongTypeInput = fmt.Sprintf("%s%s must be of type %v; ", wrongTypeInput, k, "bool")
+			}
 		}
 	}
 	if missingInput != "" {
 		return nil, fmt.Errorf("Missing required input attributes: %s", missingInput)
 	}
 	if wrongTypeInput != "" {
-		return nil, fmt.Errorf("Input attribute with incorrect type: %s", missingInput)
+		return nil, fmt.Errorf("Input attribute with incorrect type: %s", wrongTypeInput)
 	}
 
 	rules, exists := groupRules[groupName]

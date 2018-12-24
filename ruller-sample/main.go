@@ -30,7 +30,8 @@ func main() {
 		panic(err)
 	}
 
-	ruller.AddRequiredInput("test", "sampleinput")
+	ruller.AddRequiredInput("test", "samplestring", ruller.String)
+	ruller.AddRequiredInput("test", "samplefloat", ruller.Numeric)
 
 	err = ruller.AddChild("test", "rule1.1", "rule1", func(ctx ruller.Context) (map[string]interface{}, error) {
 		output := make(map[string]interface{})
