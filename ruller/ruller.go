@@ -24,8 +24,8 @@ type InputType int
 const (
 	//String input type
 	String InputType = iota
-	//Numeric input type
-	Numeric
+	//Float64 input type
+	Float64
 	//Bool input type
 	Bool
 )
@@ -168,7 +168,7 @@ func Process(groupName string, input map[string]interface{}, options ProcessOpti
 			missingInput = missingInput + " " + k
 		} else {
 			actualType := reflect.TypeOf(v)
-			if requiredType == Numeric {
+			if requiredType == Float64 {
 				if actualType.Kind() != reflect.Float64 {
 					wrongTypeInput = fmt.Sprintf("%s%s must be of type %v; ", wrongTypeInput, k, "numeric")
 				}
