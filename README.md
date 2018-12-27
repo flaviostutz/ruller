@@ -209,7 +209,7 @@ curl -X POST \
    * "\_ip\_latitude: Latitude
    * "\_ip\_accuracy_radius: Accuracy radius
 
-* You can define required inputs along with their associated types so that before processing rules Ruller will perform a basic check if they are present (ruller.AddRequiredInput(..))
+* You can define required inputs along with their associated types so that before processing rules Ruller will perform a basic check if they are present (ruller.AddRequiredInput(..)). This is usedful so that you don't have to perform those verifications inside each rule, as it was already verified before executing the rules.
 
 ## Request/Response filtering
 
