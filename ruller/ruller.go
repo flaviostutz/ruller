@@ -34,6 +34,8 @@ var (
 	groupRules                        = make(map[string][]*ruleInfo)
 	requiredInputNames                = make(map[string]map[string]InputType)
 	rulesMap                          = make(map[string]map[string]*ruleInfo)
+	groupFlatten                      = make(map[string]bool)
+	groupKeepFirst                    = make(map[string]bool)
 	requestFilter      RequestFilter  = func(r *http.Request, input map[string]interface{}) error { return nil }
 	responseFilter     ResponseFilter = func(w http.ResponseWriter, input map[string]interface{}, output map[string]interface{}, outBytes []byte) (bool, error) {
 		return false, nil
@@ -101,6 +103,20 @@ func SetRequestFilter(rf RequestFilter) {
 //SetResponseFilter set the function that will be called at every call with output. If returns true, won't perform the default JSON renderization
 func SetResponseFilter(rf ResponseFilter) {
 	responseFilter = rf
+}
+
+//SetDefaultFlatten sets whatever to flatten output or keep it hierarchical. This may be overriden during rules evaluation with a "_flatten" attribute in input
+func SetDefaultFlatten(groupName string, value bool) {
+	if _, exists := groupFlatten[groupName]; !exists {
+		groupFlatten[groupName] = false
+	}
+}
+
+//SetDefaultKeepFirst sets whatever to keep the first or the last occurence of an output attribute when flattening the output. This may be overriden during rules evaluation with a "_keepFirst" attribute in input
+func SetDefaultKeepFirst(groupName string, value bool) {
+	if _, exists := groupFlatten[groupName]; !exists {
+		groupKeepFirst[groupName] = false
+	}
 }
 
 //AddRequiredInput adds a input attribute name that is required before processing the rules
@@ -387,14 +403,22 @@ func handleRuleGroup(w http.ResponseWriter, r *http.Request) {
 
 	logrus.Debugf("input=%s", pinput)
 
-	keepFirst, err := getBool(pinput, "_keepFirst", true)
+	defaultKeepFirst, exists := groupKeepFirst[groupName]
+	if !exists {
+		defaultKeepFirst = true
+	}
+	keepFirst, err := getBool(pinput, "_keepFirst", defaultKeepFirst)
 	if err != nil {
 		logrus.Warnf(err.Error())
 		http.Error(w, "Error processing rules", 500)
 		return
 	}
 
-	flatten, err := getBool(pinput, "_flatten", true)
+	defaultFlatten, exists := groupFlatten[groupName]
+	if !exists {
+		defaultFlatten = false
+	}
+	flatten, err := getBool(pinput, "_flatten", defaultFlatten)
 	if err != nil {
 		logrus.Warnf(err.Error())
 		http.Error(w, "Error processing rules", 500)
