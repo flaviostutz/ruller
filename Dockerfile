@@ -3,7 +3,7 @@ FROM golang:1.10 AS BUILD
 RUN curl https://geolite.maxmind.com/download/geoip/database/GeoLite2-City.tar.gz --output /opt/GeoLite2-City.tar.gz
 RUN cd /opt && \
     tar -xvf GeoLite2-City.tar.gz && \
-    mv GeoLite2-City_20181218/GeoLite2-City.mmdb /opt/Geolite2-City.mmdb && \
+    mv */GeoLite2-City.mmdb /opt/Geolite2-City.mmdb && \
     rm -rf GeoLite2-City_20181218 && \
     rm GeoLite2-City.tar.gz
 
