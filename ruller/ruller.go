@@ -108,14 +108,14 @@ func SetResponseFilter(rf ResponseFilter) {
 //SetDefaultFlatten sets whatever to flatten output or keep it hierarchical. This may be overriden during rules evaluation with a "_flatten" attribute in input
 func SetDefaultFlatten(groupName string, value bool) {
 	if _, exists := groupFlatten[groupName]; !exists {
-		groupFlatten[groupName] = false
+		groupFlatten[groupName] = value
 	}
 }
 
 //SetDefaultKeepFirst sets whatever to keep the first or the last occurence of an output attribute when flattening the output. This may be overriden during rules evaluation with a "_keepFirst" attribute in input
 func SetDefaultKeepFirst(groupName string, value bool) {
 	if _, exists := groupFlatten[groupName]; !exists {
-		groupKeepFirst[groupName] = false
+		groupKeepFirst[groupName] = value
 	}
 }
 
