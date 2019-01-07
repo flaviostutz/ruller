@@ -226,7 +226,7 @@ curl -X POST \
 
 ## More resources
 
-* http://github.com/flaviostutz/ruller-sample-dsl - an example on how to build a DSL tool to generate Go Ruller code from an specific rule domain and build a Docker container with the REST api for your compiled rules
+* http://github.com/flaviostutz/ruller-sample-feature-flag - an example on how to build a DSL tool to generate Go Ruller code from a JSON and to build a Docker container with the REST api for your compiled rules
 
 ## Thanks, Maxmind!
 
