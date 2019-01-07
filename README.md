@@ -209,6 +209,9 @@ curl -X POST \
    * "\_ip\_latitude: Latitude
    * "\_ip\_accuracy_radius: Accuracy radius
 
+* When you pass a csv file in format "[country iso code],[City],[State]" using "--city-state-db", you will have an additional input:
+   * "\_ip\_state: State based on city info
+
 * You can define required inputs along with their associated types so that before processing rules Ruller will perform a basic check if they are present (ruller.AddRequiredInput(..)). This is usedful so that you don't have to perform those verifications inside each rule, as it was already verified before executing the rules.
 
 ## Request/Response filtering
