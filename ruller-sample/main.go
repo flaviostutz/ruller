@@ -31,7 +31,7 @@ func main() {
 	}
 
 	ruller.AddRequiredInput("test", "samplestring", ruller.String)
-	ruller.AddRequiredInput("test", "samplefloat", ruller.Numeric)
+	ruller.AddRequiredInput("test", "samplefloat", ruller.Float64)
 
 	err = ruller.AddChild("test", "rule1.1", "rule1", func(ctx ruller.Context) (map[string]interface{}, error) {
 		output := make(map[string]interface{})
@@ -65,7 +65,8 @@ func main() {
 		} else {
 			output["category"] = "young rule2.1"
 		}
-		output["city"] = ctx.Input["_ip_city"]
+		output["geo-city"] = ctx.Input["_ip_city"]
+		output["geo-state"] = ctx.Input["_ip_state"]
 		output["rule2.1"] = true
 		return output, nil
 	})

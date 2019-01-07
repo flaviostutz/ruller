@@ -5,6 +5,7 @@ import (
 	_ "flag"
 	"fmt"
 	_ "log"
+	_ "encoding/csv"
 	_ "os"
 	_ "os/signal"
 	_ "path/filepath"

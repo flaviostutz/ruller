@@ -1,12 +1,16 @@
 package ruller
 
 import (
+	"bufio"
+	"encoding/csv"
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
+	"os"
 	"reflect"
 	"strings"
 	"time"
@@ -40,7 +44,8 @@ var (
 	responseFilter     ResponseFilter = func(w http.ResponseWriter, input map[string]interface{}, output map[string]interface{}, outBytes []byte) (bool, error) {
 		return false, nil
 	}
-	geodb = (*geoip2.Reader)(nil)
+	geodb     = (*geoip2.Reader)(nil)
+	cityState = make(map[string]map[string]string) //[country][city]state
 )
 
 var rulesProcessingHist = prometheus.NewHistogramVec(prometheus.HistogramOpts{
@@ -296,7 +301,8 @@ func mergeMaps(rinfo *ruleInfo, sourceMap map[string]interface{}, destMapP *map[
 func StartServer() error {
 	listenPort := flag.Int("listen-port", 3000, "REST API server listen port")
 	listenIP := flag.String("listen-address", "0.0.0.0", "REST API server listen ip address")
-	golitedb := flag.String("geolite2-db", "", "Geolite mmdb database file. If not defined, localization info based on IP will be disabled")
+	geolitedb := flag.String("geolite2-db", "", "Geolite mmdb database file. If not defined, localization info based on IP will be disabled")
+	geocitystatedb := flag.String("city-state-db", "", "City->State database file in CSV format 'country-code,city,state'. If defined, input '_ip_state' will be calculated according to '_ip_city'.")
 	logLevel := flag.String("log-level", "info", "debug, info, warning or error")
 	flag.Parse()
 
@@ -317,11 +323,11 @@ func StartServer() error {
 	prometheus.MustRegister(rulesProcessingHist)
 	prometheus.MustRegister(groupRuleCount)
 
-	gf := *golitedb
+	gf := *geolitedb
 	if gf == "" {
-		logrus.Debugf("Geolite database file not found. Localization capabilities based on IP will be disabled")
+		logrus.Infof("Geolite database file not found. Localization capabilities based on IP will be disabled")
 	} else {
-		logrus.Debugf("Loading GeoIP2 database")
+		logrus.Debugf("Loading GeoIP2 database %s", gf)
 		gdb, err := geoip2.Open(gf)
 		if err != nil {
 			return err
@@ -329,6 +335,36 @@ func StartServer() error {
 		geodb = gdb
 		defer geodb.Close()
 		logrus.Infof("GeoIP2 database loaded")
+
+		cs := *geocitystatedb
+		if cs == "" {
+			logrus.Infof("City State csv file not defined. _ip_state input won't be available")
+		} else {
+			logrus.Debugf("Loading City State CSV file %s", cs)
+			csvFile, err := os.Open(cs)
+			if err != nil {
+				return err
+			}
+			reader := csv.NewReader(bufio.NewReader(csvFile))
+			for {
+				line, err := reader.Read()
+				if err == io.EOF {
+					break
+				} else if err != nil {
+					return err
+				}
+				country := strings.ToLower(line[0])
+				city := strings.ToLower(line[1])
+				state := line[2]
+				cm, exists := cityState[country]
+				if !exists {
+					cm = make(map[string]string)
+					cityState[country] = cm
+				}
+				cm[city] = state
+			}
+			logrus.Infof("City State CSV loaded")
+		}
 	}
 
 	router := mux.NewRouter()
@@ -380,6 +416,7 @@ func handleRuleGroup(w http.ResponseWriter, r *http.Request) {
 	pinput["_remote_ip"] = ipStr
 	pinput["_ip_country"] = ""
 	pinput["_ip_city"] = ""
+	pinput["_ip_state"] = ""
 	pinput["_ip_latitude"] = 0
 	pinput["_ip_longitude"] = 0
 	pinput["_ip_accuracy_radius"] = 999999
@@ -398,6 +435,15 @@ func handleRuleGroup(w http.ResponseWriter, r *http.Request) {
 			pinput["_ip_latitude"] = ipRecord.Location.Latitude
 			pinput["_ip_longitude"] = ipRecord.Location.Longitude
 			pinput["_ip_accuracy_radius"] = ipRecord.Location.AccuracyRadius
+
+			//get state from city name
+			cs, exists := cityState[strings.ToLower(ipRecord.Country.IsoCode)]
+			if exists {
+				state, exists := cs[strings.ToLower(ipRecord.City.Names["en"])]
+				if exists {
+					pinput["_ip_state"] = state
+				}
+			}
 		}
 	}
 
