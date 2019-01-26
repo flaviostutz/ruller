@@ -17,7 +17,7 @@ Checkout some [benchmarks](BENCHMARK.md) we made this far too.
 
 * main.go file
 
-```
+```go
 package main
 
 import (
@@ -226,7 +226,7 @@ curl -X POST \
 
 ## More resources
 
-* http://github.com/flaviostutz/ruller-sample-feature-flag - an example on how to build a DSL tool to generate Go Ruller code from a JSON and to build a Docker container with the REST api for your compiled rules
+* http://github.com/flaviostutz/ruller-sample-feature-flag - an example on how to build a DSL tool to generate Go Ruller code from a JSON and to build a Docker container with the REST api for your compiled rules. Has various functions for common scenarios of feature flags management
 
 ## Thanks, Maxmind!
 
