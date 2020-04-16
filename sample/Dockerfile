@@ -20,7 +20,7 @@ RUN go get -v ruller-sample
 ADD ruller $GOPATH/src/ruller
 RUN go get -v ruller
 
-ADD ruller-sample $GOPATH/src/ruller-sample
+ADD sample $GOPATH/src/ruller-sample
 RUN go get -v ruller-sample
 #RUN go test -v ruller-sample
 

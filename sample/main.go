@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"math/rand"
 	"net/http"
-	"ruller"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/flaviostutz/ruller"
+	"github.com/sirupsen/logrus"
 )
 
 func main() {
