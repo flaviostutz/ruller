@@ -2,11 +2,13 @@ version: '3.5'
 
 services:
 
-  ruller:
-    build: .
-    image: flaviostutz/ruller
+  ruller-sample:
+    build:
+      context: .
+      args:
+        MAXMIND_LICENSE_KEY: ""
+    image: flaviostutz/ruller-sample
     ports:
       - 3000:3000
     environment:
       - LOG_LEVEL=debug
-

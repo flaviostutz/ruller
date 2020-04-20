@@ -1,3 +1,8 @@
+# ruller-sample
+
+* main.go file
+
+```go
 package main
 
 import (
@@ -31,7 +36,7 @@ func main() {
 	}
 
 	ruller.AddRequiredInput("test", "samplestring", ruller.String)
-	ruller.AddRequiredInput("test", "samplefloat", ruller.Float64)
+	ruller.AddRequiredInput("test", "samplefloat", ruller.Numeric)
 
 	err = ruller.AddChild("test", "rule1.1", "rule1", func(ctx ruller.Context) (map[string]interface{}, error) {
 		output := make(map[string]interface{})
@@ -65,8 +70,7 @@ func main() {
 		} else {
 			output["category"] = "young rule2.1"
 		}
-		output["geo-city"] = ctx.Input["_ip_city"]
-		output["geo-state"] = ctx.Input["_ip_state"]
+		output["city"] = ctx.Input["_ip_city"]
 		output["rule2.1"] = true
 		return output, nil
 	})
@@ -132,7 +136,46 @@ func main() {
 		}
 	}
 
-	if err := ruller.StartServer(); err != nil {
-		logrus.Errorf("error starting server %s", err.Error())
-	}
+	ruller.StartServer()
 }
+```
+
+## Run the sample program
+
+if you cloned this repo, just type 
+```shell script
+  docker-compose up --build
+```
+
+> Note: If you want to embed the geolite-city database you must edit the `docker-compose.yml` file and add your personal `MAXMIND_LICENSE_KEY`.
+>
+> [How do I generate a license key?](https://support.maxmind.com/account-faq/license-keys/how-do-i-generate-a-license-key/)
+
+## Execute some tests
+
+```shell script
+curl -X POST \
+  http://localhost:3000/rules/test \
+  -H 'Content-Type: application/json' \
+  -d '{
+	"age": 22,
+	"children": false
+}'
+```
+```json5
+{"category":"young","opt1":"Lots of tests","opt2":129.99}
+```
+
+-----
+```shell script
+curl -X POST \
+  http://localhost:3000/rules/test \
+  -H 'Content-Type: application/json' \
+  -d '{
+	"age": 77,
+	"children": true
+}'
+```
+```json5
+{"category":"elder","children":{"c1":"v1","c2":"v2"},"opt1":"Lots of tests","opt2":129.99}
+```
