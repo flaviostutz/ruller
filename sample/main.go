@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"math/rand"
 	"net/http"
-	"ruller"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/flaviostutz/ruller"
+	"github.com/sirupsen/logrus"
 )
 
 func main() {
@@ -132,5 +132,7 @@ func main() {
 		}
 	}
 
-	ruller.StartServer()
+	if err := ruller.StartServer(); err != nil {
+		logrus.Errorf("error starting server %s", err.Error())
+	}
 }
