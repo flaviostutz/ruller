@@ -1,0 +1,11 @@
+version: '3.5'
+
+services:
+
+  ruller-sample:
+    build: .
+    image: flaviostutz/ruller-dev
+    ports:
+      - 3000:3000
+    environment:
+      - LOG_LEVEL=debug
