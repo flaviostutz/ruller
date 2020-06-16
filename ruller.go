@@ -368,7 +368,7 @@ func StartServer() error {
 	}
 
 	router := mux.NewRouter()
-	router.HandleFunc("/rules/{groupName}", handleRuleGroup).Methods("POST")
+	router.HandleFunc("/rules/{groupName}", HandleRuleGroup).Methods("POST")
 	router.Handle("/metrics", promhttp.Handler())
 	listen := fmt.Sprintf("%s:%d", *listenIP, *listenPort)
 	logrus.Infof("Listening at %s", listen)
@@ -379,11 +379,13 @@ func StartServer() error {
 	return nil
 }
 
-func handleRuleGroup(w http.ResponseWriter, r *http.Request) {
+func HandleRuleGroup(w http.ResponseWriter, r *http.Request) {
 	logrus.Debugf("processRuleGroup r=%v", r)
 	params := mux.Vars(r)
 
 	groupName := params["groupName"]
+
+	logrus.Debugf("processRuleGroup r=%s", groupName)
 
 	logrus.Debugf("Parsing input json to map")
 	bodyBytes, err := ioutil.ReadAll(r.Body)
