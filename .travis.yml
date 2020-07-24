@@ -1,0 +1,8 @@
+dist: trusty
+
+jobs:
+  include:
+    - stage: build and test docker image
+      script:
+      - docker-compose build
+

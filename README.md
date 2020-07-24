@@ -1,4 +1,8 @@
 # ruller
+
+[<img src="https://travis-ci.org/flaviostutz/ruller.svg?branch=master)"/>](https://travis-ci.org/github/flaviostutz/ruller)
+
+
 A simple REST based rule engine in which rules are written in Go
 
 1. You create and register some rules as Go functions in a "main" program and run it
