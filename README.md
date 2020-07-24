@@ -1,7 +1,6 @@
 # ruller
 
-[<img src="https://travis-ci.org/flaviostutz/ruller.svg?branch=master)"/>](https://travis-ci.org/github/flaviostutz/ruller)
-
+[![Build Status](https://travis-ci.org/flaviostutz/ruller.svg?branch=master)](https://travis-ci.org/flaviostutz/ruller)
 
 A simple REST based rule engine in which rules are written in Go
 
