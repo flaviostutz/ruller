@@ -1,6 +1,7 @@
 # ruller
 
-[![Build Status](https://travis-ci.org/flaviostutz/ruller.svg?branch=master)](https://travis-ci.org/flaviostutz/ruller)
+[![Build Status](https://travis-ci.org/flaviostutz/ruller.svg?branch=master)](https://travis-ci.org/flaviostutz/ruller)<br/>
+[<img src="https://goreportcard.com/badge/github.com/flaviostutz/promster"/>](https://goreportcard.com/report/github.com/flaviostutz/promster)
 
 A simple REST based rule engine in which rules are written in Go
 
