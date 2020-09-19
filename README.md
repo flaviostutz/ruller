@@ -9,7 +9,8 @@ A simple REST based rule engine in which rules are written in Go
 2. You POST to `/rules/[group-name]` along with some JSON body.
 3. All rules for that group are processed using the request body.
 4. Depending on your implementation, some rules returns data and some rules not.
-4. Finally, all rule's results are merged and returned to the REST caller as a JSON.
+5. Finally, all rule's results are merged and returned to the REST caller as a JSON.
+6. You can websocket connect to `/ws` in order to detect server restarts. This is a dummy websocket server.
 
 Ruller works by invoking a bunch of rules with the same input from a single REST call, merging rules outputs and returning the result to the caller. 
 
