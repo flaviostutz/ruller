@@ -1,7 +1,9 @@
 # Global ARG (set before the first build-stage), can be used in each build-stage.
 ARG MAXMIND_LICENSE_KEY
 
-FROM golang:1.13 AS BUILD
+FROM golang:1.14.3-alpine3.11 AS BUILD
+
+RUN apk add curl
 
 WORKDIR /opt
 

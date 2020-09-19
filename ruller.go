@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/gorilla/websocket"
 	"github.com/oschwald/geoip2-golang"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -304,6 +305,7 @@ func StartServer() error {
 	geolitedb := flag.String("geolite2-db", "", "Geolite mmdb database file. If not defined, localization info based on IP will be disabled")
 	geocitystatedb := flag.String("city-state-db", "", "City->State database file in CSV format 'country-code,city,state'. If defined, input '_ip_state' will be calculated according to '_ip_city'.")
 	logLevel := flag.String("log-level", "info", "debug, info, warning or error")
+	ws := flag.Bool("ws", true, "Enable dummy WS at /ws (useful for detecting ruller restarts)")
 	flag.Parse()
 
 	switch *logLevel {
@@ -370,6 +372,9 @@ func StartServer() error {
 	router := mux.NewRouter()
 	router.HandleFunc("/rules/{groupName}", HandleRuleGroup).Methods("POST")
 	router.Handle("/metrics", promhttp.Handler())
+	if *ws {
+		router.HandleFunc("/ws", dummyWS)
+	}
 	listen := fmt.Sprintf("%s:%d", *listenIP, *listenPort)
 	logrus.Infof("Listening at %s", listen)
 	err := http.ListenAndServe(listen, router)
@@ -377,6 +382,29 @@ func StartServer() error {
 		return err
 	}
 	return nil
+}
+
+var upgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool {
+		return true
+	},
+} // use default options
+
+func dummyWS(w http.ResponseWriter, r *http.Request) {
+	c, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		logrus.Warnf("ws upgrade err: %s", err)
+		return
+	}
+	defer c.Close()
+	c.SetReadLimit(10)
+	for {
+		_, _, err := c.ReadMessage()
+		if err != nil {
+			logrus.Warnf("ws read err: %s", err)
+			return
+		}
+	}
 }
 
 func HandleRuleGroup(w http.ResponseWriter, r *http.Request) {
