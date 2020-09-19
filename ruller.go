@@ -401,7 +401,7 @@ func dummyWS(w http.ResponseWriter, r *http.Request) {
 	for {
 		_, _, err := c.ReadMessage()
 		if err != nil {
-			logrus.Warnf("ws read err: %s", err)
+			logrus.Debugf("ws read err: %s", err)
 			return
 		}
 	}
