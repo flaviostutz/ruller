@@ -1,6 +1,3 @@
-# Global ARG (set before the first build-stage), can be used in each build-stage.
-ARG MAXMIND_LICENSE_KEY
-
 FROM golang:1.14.3-alpine3.11 AS BUILD
 
 RUN apk add curl
@@ -8,6 +5,7 @@ RUN apk add curl
 WORKDIR /opt
 
 # download db if arg is not empty
+ARG MAXMIND_LICENSE_KEY
 ADD /sample/download-geolite2-city.sh /opt/
 RUN /opt/download-geolite2-city.sh $MAXMIND_LICENSE_KEY
 
