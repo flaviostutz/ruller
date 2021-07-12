@@ -47,6 +47,9 @@ var (
 	}
 	geodb     = (*geoip2.Reader)(nil)
 	cityState = make(map[string]map[string]string) //[country][city]state
+	origins string;
+	allow_methods string;
+	allow_headers string;
 )
 
 var rulesProcessingHist = prometheus.NewHistogramVec(prometheus.HistogramOpts{
@@ -298,8 +301,27 @@ func mergeMaps(rinfo *ruleInfo, sourceMap map[string]interface{}, destMapP *map[
 	}
 }
 
+func Middleware(next http.Handler) http.Handler {
+    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {		
+		w.Header().Set("Access-Control-Allow-Origin", origins)
+		w.Header().Set("Access-Control-Allow-Methods", allow_methods)
+		w.Header().Set("Access-Control-Allow-Headers", allow_headers)
+
+		if (r.Method == "OPTIONS") {
+			//handle preflight in here
+			logrus.Debugf("OPTIONS Method")
+		  } else {
+			next.ServeHTTP(w, r)
+		  }
+    })
+}
+
+
 //StartServer Initialize and start REST server
 func StartServer() error {
+	origins = *(flag.String("origins", "", "Allowed Origins"))
+	allow_methods =  *(flag.String("allow-methods", "POST, GET, OPTIONS", "Allowed Methods"))
+	allow_headers = *(flag.String("allow-headers", "Accept, Accept-Encoding, Cache-Control, User-Agent, Accept-Language, Content-Type", "Allowed Headers"))
 	listenPort := flag.Int("listen-port", 3000, "REST API server listen port")
 	listenIP := flag.String("listen-address", "0.0.0.0", "REST API server listen ip address")
 	geolitedb := flag.String("geolite2-db", "", "Geolite mmdb database file. If not defined, localization info based on IP will be disabled")
@@ -370,8 +392,10 @@ func StartServer() error {
 	}
 
 	router := mux.NewRouter()
-	router.HandleFunc("/rules/{groupName}", HandleRuleGroup).Methods("POST")
+	router.HandleFunc("/rules/{groupName}", HandleRuleGroup).Methods("POST","OPTIONS")
 	router.Handle("/metrics", promhttp.Handler())
+	router.Use(Middleware)
+
 	if *ws {
 		router.HandleFunc("/ws", dummyWS)
 	}
